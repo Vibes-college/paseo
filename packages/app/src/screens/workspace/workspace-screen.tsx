@@ -3785,7 +3785,7 @@ function WorkspaceScreenContent({
             mobile
           />
         ) : null}
-        {!isMobile ? <PaseoRequestCompactButton /> : null}
+        <PaseoRequestCompactButton />
       </View>
     ),
     [
