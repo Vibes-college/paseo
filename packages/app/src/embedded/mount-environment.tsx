@@ -33,15 +33,22 @@ export interface PaseoMountFailure {
 
 export interface PaseoMountCallbacks {
   requestSurface(surface: PaseoSurface): void;
+  requestMinimize(): void;
   surfaceCommitted(surface: PaseoSurface): void;
   shellPresentationChanged(presentation: OpaquePaseoShellPresentation): void;
   firstCommit(): void;
   fatal(error: PaseoMountFailure): void;
 }
 
+export interface PaseoMountShellSlots {
+  newRuntime: HTMLElement;
+  runtimeMenu: HTMLElement;
+}
+
 export interface PaseoMountController {
   readonly initialPath: string;
   readonly overlayRoot: HTMLElement;
+  readonly shellSlots: PaseoMountShellSlots | null;
   readonly callbacks: PaseoMountCallbacks;
   getSnapshot(): PaseoMountSnapshot;
   subscribe(listener: () => void): () => void;

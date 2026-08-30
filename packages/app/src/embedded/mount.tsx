@@ -9,6 +9,7 @@ import {
   installPaseoMountController,
   type PaseoMountCallbacks,
   type PaseoMountController,
+  type PaseoMountShellSlots,
   type PaseoMountSnapshot,
 } from "./mount-environment";
 import { getWebOverlayDiagnostics, installOwnedOverlayRoot } from "@/lib/overlay-root";
@@ -41,6 +42,7 @@ class ExternalMountController implements PaseoMountController {
   constructor(
     readonly initialPath: string,
     readonly overlayRoot: HTMLElement,
+    readonly shellSlots: PaseoMountShellSlots | null,
     readonly callbacks: PaseoMountCallbacks,
     initial: PaseoMountSnapshot,
   ) {
@@ -81,10 +83,14 @@ export async function mountPaseoApp(input: {
   container: HTMLElement;
   initial: PaseoMountSnapshot;
   initialPath?: string;
+  shellSlots?: PaseoMountShellSlots;
   callbacks: PaseoMountCallbacks;
 }): Promise<MountedPaseoApp> {
   if (!input.container.isConnected) {
     throw new Error("the Complete Paseo App container must be connected");
+  }
+  if (input.container.querySelector("[data-paseo-app-root]")) {
+    throw new Error("the Complete Paseo App container is already mounted");
   }
 
   registerCompleteRoot();
@@ -103,16 +109,17 @@ export async function mountPaseoApp(input: {
     overflow: "hidden",
   });
   Object.assign(overlayRoot.style, {
-    position: "fixed",
+    position: "absolute",
     inset: "0",
     pointerEvents: "none",
-    zIndex: "1",
+    zIndex: "50",
   });
-  input.container.replaceChildren(appNode, overlayRoot);
+  input.container.append(appNode, overlayRoot);
 
   const controller = new ExternalMountController(
     normalizeInitialPath(input.initialPath),
     overlayRoot,
+    input.shellSlots ?? null,
     input.callbacks,
     input.initial,
   );
@@ -129,7 +136,8 @@ export async function mountPaseoApp(input: {
   } catch (error) {
     releaseOverlayRoot?.();
     releaseController?.();
-    input.container.replaceChildren();
+    appNode.remove();
+    overlayRoot.remove();
     await owner.dispose();
     input.callbacks.fatal({
       code: "mount-failed",
@@ -159,7 +167,8 @@ export async function mountPaseoApp(input: {
       releaseOverlayRoot = null;
       releaseController?.();
       releaseController = null;
-      input.container.replaceChildren();
+      appNode.remove();
+      overlayRoot.remove();
     });
 
   return {

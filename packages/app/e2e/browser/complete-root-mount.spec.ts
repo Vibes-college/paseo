@@ -40,10 +40,47 @@ test("mounts the Complete Root with isolated routing, owned overlays, and clean 
     ]);
     expect(compactBox!.x).toBeGreaterThan(explorerBox!.x);
 
+    const identityBeforeCompact = await page.evaluate(() => ({
+      rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,
+      activeConnectionCount:
+        window.__paseoCompleteRootV1!.diagnostics()!.owner!.runtime.activeConnectionCount,
+    }));
     await compactRequest.click();
     await expect(page.locator("#root")).toHaveAttribute("data-paseo-request-count", "1");
     await expect(page.locator("#root")).toHaveAttribute("data-paseo-requested-surface", "compact");
+    await expect(page.locator("#root")).toHaveAttribute("data-paseo-committed-surface", "compact");
     await expect(page.locator("[data-paseo-app-root]")).toHaveCount(1);
+
+    const compactSurface = page.locator('[data-paseo-host-surface][data-surface="compact"]');
+    await expect(compactSurface).toBeVisible();
+    await expect(compactSurface).toHaveAttribute("data-paseo-compact-width", "380");
+    await expect(compactSurface).toHaveAttribute("data-paseo-compact-height", "600");
+    await expect(page.locator("[data-paseo-compact-header]:visible")).toHaveCount(1);
+    await expect(page.locator('button[aria-label="New tab"]:visible')).toHaveCount(1);
+    await expect(page.locator('button[aria-label^="Runtime menu"]:visible')).toHaveCount(1);
+    await expect(page.locator('button[aria-label="Open full Paseo"]:visible')).toHaveCount(1);
+    await expect(page.locator('button[aria-label="Minimize"]:visible')).toHaveCount(1);
+
+    await page.locator('button[aria-label^="Runtime menu"]:visible').click();
+    await expect(page.locator('[data-testid="paseo-compact-runtime-menu"]:visible')).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator('[data-testid="paseo-compact-runtime-menu"]:visible')).toHaveCount(0);
+
+    await page.locator('button[aria-label="Minimize"]:visible').click();
+    await expect(page.locator("#root")).toHaveAttribute("data-paseo-minimize-request-count", "1");
+    await expect(compactSurface).toBeVisible();
+
+    await page.locator('button[aria-label="Open full Paseo"]:visible').click();
+    await expect(page.locator("#root")).toHaveAttribute("data-paseo-request-count", "2");
+    await expect(page.locator("#root")).toHaveAttribute("data-paseo-committed-surface", "full");
+    await expect(compactRequest).toBeVisible();
+    expect(
+      await page.evaluate(() => ({
+        rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,
+        activeConnectionCount:
+          window.__paseoCompleteRootV1!.diagnostics()!.owner!.runtime.activeConnectionCount,
+      })),
+    ).toEqual(identityBeforeCompact);
 
     await page.locator('button[aria-label="Settings"]:visible').click();
     await expect(page.locator('button[aria-label="Back"]:visible')).toBeVisible();
@@ -58,11 +95,11 @@ test("mounts the Complete Root with isolated routing, owned overlays, and clean 
     const overlayOwnership = await page.evaluate(() => {
       const overlay = document.querySelector("[data-paseo-overlay-root]");
       return {
-        parentIsRoot: overlay?.parentElement?.id === "root",
+        parentIsSurface: overlay?.parentElement?.hasAttribute("data-paseo-host-surface") === true,
         bodyOverlayCount: document.body.querySelectorAll(":scope > #overlay-root").length,
       };
     });
-    expect(overlayOwnership).toEqual({ parentIsRoot: true, bodyOverlayCount: 0 });
+    expect(overlayOwnership).toEqual({ parentIsSurface: true, bodyOverlayCount: 0 });
 
     await page.evaluate(() => window.__paseoCompleteRootV1!.dispose());
     await expect(page.locator("[data-paseo-app-root]")).toHaveCount(0);

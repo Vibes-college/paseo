@@ -203,8 +203,9 @@ import {
   type WorkspaceFileOpenRequest,
 } from "@/workspace/file-open";
 import { RenderProfile } from "@/utils/render-profiler";
-import { isEmbeddedPaseoApp } from "@/embedded/mount-environment";
+import { isEmbeddedPaseoApp, usePaseoMountSnapshot } from "@/embedded/mount-environment";
 import { PaseoRequestCompactButton } from "@/embedded/request-compact-button";
+import { PaseoCompactShellControls } from "@/embedded/compact-shell-controls";
 import { useWorkspaceCheckoutStatus } from "@/screens/workspace/use-workspace-checkout-status";
 import { useHasPullRequest } from "@/panels/pull-request";
 
@@ -1366,11 +1367,24 @@ function WorkspaceDocumentTitleEffectSlot({
   );
 }
 
+function useUsesEmbeddedCompactShell(): boolean {
+  return usePaseoMountSnapshot()?.surface === "compact";
+}
+
 function shouldShowWorkspaceScreenHeader(input: {
   isFocusModeEnabled: boolean;
   isMobile: boolean;
+  usesEmbeddedCompactShell: boolean;
 }): boolean {
+  if (input.usesEmbeddedCompactShell) return false;
   return !input.isFocusModeEnabled || input.isMobile;
+}
+
+function shouldShowMobileWorkspaceTabSwitcher(input: {
+  isMobile: boolean;
+  usesEmbeddedCompactShell: boolean;
+}): boolean {
+  return input.isMobile && !input.usesEmbeddedCompactShell;
 }
 
 function buildWorkspaceTerminalScopeKey(serverId: string, workspaceId: string): string | null {
@@ -1532,6 +1546,7 @@ function WorkspaceScreenContent({
   const _insets = useSafeAreaInsets();
   const toast = useToast();
   const isMobile = useIsCompactFormFactor();
+  const usesEmbeddedCompactShell = useUsesEmbeddedCompactShell();
   const hasMacTrafficLights = useHasWindowChromeObstruction("top-left");
   const explorerToggleOwner = resolveWorkspaceExplorerToggleOwner({
     isMobile,
@@ -3793,8 +3808,13 @@ function WorkspaceScreenContent({
   );
 
   const showScreenHeader = useMemo(
-    () => shouldShowWorkspaceScreenHeader({ isFocusModeEnabled, isMobile }),
-    [isFocusModeEnabled, isMobile],
+    () =>
+      shouldShowWorkspaceScreenHeader({
+        isFocusModeEnabled,
+        isMobile,
+        usesEmbeddedCompactShell,
+      }),
+    [isFocusModeEnabled, isMobile, usesEmbeddedCompactShell],
   );
   const renderExplorerSidebarHeaderAction = useCallback(
     () => (
@@ -4007,7 +4027,17 @@ function WorkspaceScreenContent({
     <View style={styles.centerColumn}>
       {rendersDesktopSplitContent ? null : renderWorkspaceScreenHeader()}
 
-      {isMobile ? (
+      <PaseoCompactShellControls
+        tabs={tabs}
+        activeTab={activeTabDescriptor}
+        activeTabKey={activeTabKey}
+        serverId={normalizedServerId}
+        workspaceId={normalizedWorkspaceId}
+        onCreateRuntime={handleCreateDraftTab}
+        onSelectRuntime={handleSelectSwitcherTab}
+      />
+
+      {shouldShowMobileWorkspaceTabSwitcher({ isMobile, usesEmbeddedCompactShell }) ? (
         <MobileWorkspaceTabSwitcher
           tabs={tabs}
           activeTabKey={activeTabKey}

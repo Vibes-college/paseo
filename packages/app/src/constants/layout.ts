@@ -1,5 +1,6 @@
 import { useUnistyles } from "react-native-unistyles";
 import { isWeb } from "@/constants/platform";
+import { usePaseoMountSnapshot } from "@/embedded/mount-environment";
 
 export const FOOTER_HEIGHT = 75;
 
@@ -41,7 +42,8 @@ export {
  */
 export function useIsCompactFormFactor(): boolean {
   const { rt } = useUnistyles();
-  return rt.breakpoint === "xs" || rt.breakpoint === "sm";
+  const mountSnapshot = usePaseoMountSnapshot();
+  return mountSnapshot?.surface === "compact" || rt.breakpoint === "xs" || rt.breakpoint === "sm";
 }
 
 // SplitContainer relies on dnd-kit and DOM-backed accessibility helpers.

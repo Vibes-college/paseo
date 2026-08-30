@@ -10,8 +10,10 @@ function controller(): PaseoMountController {
   return {
     initialPath: "/",
     overlayRoot: {} as HTMLElement,
+    shellSlots: null,
     callbacks: {
       requestSurface: vi.fn(),
+      requestMinimize: vi.fn(),
       surfaceCommitted: vi.fn(),
       shellPresentationChanged: vi.fn(),
       firstCommit: vi.fn(),

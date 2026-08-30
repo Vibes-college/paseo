@@ -1,9 +1,11 @@
 import * as metroRuntime from "@expo/metro-runtime";
+import { createPaseoHostShell, type PaseoHostShell } from "./compact-host-shell.web";
 import { mountPaseoApp, type MountedPaseoApp } from "./mount";
 import type {
   PaseoHostActivity,
   PaseoMountCallbacks,
   PaseoMountSnapshot,
+  PaseoSurface,
 } from "./mount-environment";
 
 void metroRuntime;
@@ -11,9 +13,15 @@ void metroRuntime;
 interface CompleteRootHarness {
   ready: Promise<void>;
   updateActivity(activity: PaseoHostActivity): Promise<void>;
+  setSurface(surface: PaseoSurface): Promise<void>;
   dispose(): Promise<void>;
   remount(): Promise<void>;
-  diagnostics(): ReturnType<MountedPaseoApp["diagnostics"]> | null;
+  diagnostics():
+    | (ReturnType<MountedPaseoApp["diagnostics"]> & {
+        shell: ReturnType<PaseoHostShell["diagnostics"]>;
+        minimizeRequestCount: number;
+      })
+    | null;
 }
 
 declare global {
@@ -26,12 +34,12 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error('Complete Paseo App requires the Expo root element "#root"');
 }
-const container: HTMLElement = rootElement;
+const hostRoot: HTMLElement = rootElement;
 
 const originalStyles = {
   document: document.documentElement.style.cssText,
   body: document.body.style.cssText,
-  container: container.style.cssText,
+  root: hostRoot.style.cssText,
 };
 const search = new URLSearchParams(window.location.search);
 const initialPath = search.get("paseoPath") ?? "/";
@@ -41,42 +49,71 @@ const initialActivity: PaseoHostActivity = {
   foreground: document.visibilityState === "visible",
 };
 let snapshot: PaseoMountSnapshot = {
-  surface: "full",
+  surface: search.get("paseoSurface") === "compact" ? "compact" : "full",
   activity: initialActivity,
 };
 let mounted: MountedPaseoApp | null = null;
+let shell: PaseoHostShell | null = null;
 let requestCount = 0;
+let minimizeRequestCount = 0;
 let releaseHostSentinel: () => void = () => undefined;
+
+const updateSurface = async (surface: PaseoSurface) => {
+  snapshot = { ...snapshot, surface };
+  shell?.setSurface(surface);
+  await mounted?.update(snapshot);
+};
+
+const reportFatal = (error: unknown) => {
+  callbacks.fatal({
+    code: "surface-update-failed",
+    message: error instanceof Error ? error.message : "Paseo surface update failed",
+    cause: error,
+  });
+};
 
 const callbacks: PaseoMountCallbacks = {
   requestSurface: (surface) => {
     requestCount += 1;
-    container.dataset.paseoRequestedSurface = surface;
-    container.dataset.paseoRequestCount = String(requestCount);
+    hostRoot.dataset.paseoRequestedSurface = surface;
+    hostRoot.dataset.paseoRequestCount = String(requestCount);
+    void updateSurface(surface).catch(reportFatal);
+  },
+  requestMinimize: () => {
+    minimizeRequestCount += 1;
+    hostRoot.dataset.paseoMinimizeRequestCount = String(minimizeRequestCount);
   },
   surfaceCommitted: (surface) => {
-    container.dataset.paseoCommittedSurface = surface;
+    hostRoot.dataset.paseoCommittedSurface = surface;
   },
   shellPresentationChanged: (presentation) => {
-    container.dataset.paseoPresentationState = presentation.state;
+    hostRoot.dataset.paseoPresentationTitle = presentation.title;
+    hostRoot.dataset.paseoPresentationState = presentation.state;
   },
   firstCommit: () => {
-    container.dataset.paseoFirstCommit = "true";
+    hostRoot.dataset.paseoFirstCommit = "true";
   },
   fatal: (failure) => {
-    container.dataset.paseoFatal = failure.code;
+    hostRoot.dataset.paseoFatal = failure.code;
     console.error("[CompletePaseoMount] fatal", failure);
   },
 };
 
 const start = async () => {
   applyMountStyles();
+  shell = createPaseoHostShell({
+    root: hostRoot,
+    initialSurface: snapshot.surface,
+    onRequestSurface: callbacks.requestSurface,
+    onRequestMinimize: callbacks.requestMinimize,
+  });
   releaseHostSentinel =
-    search.get("paseoHostSentinel") === "1" ? installHostSentinel(container) : () => undefined;
+    search.get("paseoHostSentinel") === "1" ? installHostSentinel(hostRoot) : () => undefined;
   mounted = await mountPaseoApp({
-    container,
+    container: shell.container,
     initial: snapshot,
     initialPath,
+    shellSlots: shell.slots,
     callbacks,
   });
 };
@@ -90,23 +127,34 @@ window.__paseoCompleteRootV1 = {
     snapshot = { ...snapshot, activity };
     await mounted?.update(snapshot);
   },
+  setSurface: async (surface) => {
+    await ready;
+    await updateSurface(surface);
+  },
   dispose: async () => {
     await ready;
     await mounted?.dispose();
     mounted = null;
+    shell?.dispose();
+    shell = null;
     releaseHostSentinel();
     releaseHostSentinel = () => undefined;
     restoreHostStyles();
   },
   remount: async () => {
     await ready;
-    if (mounted) {
+    if (mounted || shell) {
       throw new Error("dispose the Complete Paseo App before remounting");
     }
     ready = start();
     await ready;
   },
-  diagnostics: () => mounted?.diagnostics() ?? null,
+  diagnostics: () => {
+    const mountDiagnostics = mounted?.diagnostics();
+    const shellDiagnostics = shell?.diagnostics();
+    if (!mountDiagnostics || !shellDiagnostics) return null;
+    return { ...mountDiagnostics, shell: shellDiagnostics, minimizeRequestCount };
+  },
 };
 
 function applyMountStyles() {
@@ -117,13 +165,19 @@ function applyMountStyles() {
     margin: "0",
     overflow: "hidden",
   });
-  Object.assign(container.style, { width: "100%", height: "100%", overflow: "hidden" });
+  Object.assign(hostRoot.style, {
+    position: "relative",
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+  });
 }
 
 function restoreHostStyles() {
   document.documentElement.style.cssText = originalStyles.document;
   document.body.style.cssText = originalStyles.body;
-  container.style.cssText = originalStyles.container;
+  hostRoot.style.cssText = originalStyles.root;
+  hostRoot.replaceChildren();
 }
 
 function installHostSentinel(root: HTMLElement): () => void {
