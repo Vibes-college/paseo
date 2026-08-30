@@ -51,6 +51,7 @@ import {
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import { isEmbeddedPaseoApp } from "@/embedded/mount-environment";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -3117,29 +3118,47 @@ export const ToolCall = memo(function ToolCall({
     return () => onOpenFilePath(openFilePath);
   }, [presentation.openFilePath, onOpenFilePath]);
 
-  const handleToggle = useCallback(() => {
-    if (!shouldRenderInline) {
-      openToolCall({
-        displayName: presentation.displayName,
-        summary: presentation.summary,
-        detail: effectiveDetail,
-        errorText: presentation.errorText,
-        icon: presentation.icon,
-        showLoadingSkeleton: presentation.isLoadingDetails,
-      });
-    } else {
-      setIsExpanded((prev) => !prev);
-    }
+  const openDetails = useCallback(() => {
+    const retainSheetExpansion =
+      !shouldRenderInline && isEmbeddedPaseoApp() && Boolean(onInlineDetailsExpandedChange);
+    if (retainSheetExpansion) onInlineDetailsExpandedChange?.(true);
+    openToolCall({
+      displayName: presentation.displayName,
+      summary: presentation.summary,
+      detail: effectiveDetail,
+      errorText: presentation.errorText,
+      icon: presentation.icon,
+      showLoadingSkeleton: presentation.isLoadingDetails,
+      onClose: retainSheetExpansion ? () => onInlineDetailsExpandedChange?.(false) : undefined,
+    });
   }, [
-    shouldRenderInline,
+    effectiveDetail,
+    onInlineDetailsExpandedChange,
     openToolCall,
     presentation.displayName,
-    presentation.summary,
     presentation.errorText,
     presentation.icon,
     presentation.isLoadingDetails,
-    effectiveDetail,
+    presentation.summary,
+    shouldRenderInline,
   ]);
+  const handleToggle = useCallback(() => {
+    if (!shouldRenderInline) {
+      openDetails();
+    } else {
+      setIsExpanded((prev) => !prev);
+    }
+  }, [openDetails, shouldRenderInline]);
+  const retainedSheetOpenedRef = useRef(false);
+  useEffect(() => {
+    if (shouldRenderInline) {
+      retainedSheetOpenedRef.current = false;
+      return;
+    }
+    if (!defaultExpanded || retainedSheetOpenedRef.current) return;
+    retainedSheetOpenedRef.current = true;
+    openDetails();
+  }, [defaultExpanded, openDetails, shouldRenderInline]);
 
   useEffect(() => {
     if (!onInlineDetailsHoverChange || !shouldRenderInline || isExpanded) {
@@ -3153,14 +3172,16 @@ export const ToolCall = memo(function ToolCall({
       return;
     }
     if (!shouldRenderInline) {
-      onInlineDetailsExpandedChange(false);
+      if (!isEmbeddedPaseoApp() || !defaultExpanded) {
+        onInlineDetailsExpandedChange(false);
+      }
       return;
     }
     onInlineDetailsExpandedChange(isExpanded);
-  }, [isExpanded, shouldRenderInline, onInlineDetailsExpandedChange]);
+  }, [defaultExpanded, isExpanded, shouldRenderInline, onInlineDetailsExpandedChange]);
 
   useEffect(() => {
-    if (!onInlineDetailsExpandedChange) {
+    if (!onInlineDetailsExpandedChange || isEmbeddedPaseoApp()) {
       return () => {};
     }
     return () => {

@@ -23,6 +23,7 @@ export interface ToolCallSheetData {
   errorText?: string;
   icon: ToolCallIconComponent;
   showLoadingSkeleton?: boolean;
+  onClose?: () => void;
 }
 
 interface ToolCallSheetContextValue {
@@ -88,15 +89,20 @@ interface ToolCallSheetProviderProps {
 export function ToolCallSheetProvider({ children }: ToolCallSheetProviderProps) {
   const [sheetData, setSheetData] = React.useState<ToolCallSheetData | null>(null);
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const closeCallbackRef = React.useRef<(() => void) | null>(null);
 
   const snapPoints = useMemo(() => ["60%", "95%"], []);
 
   const openToolCall = useCallback((data: ToolCallSheetData) => {
+    closeCallbackRef.current = data.onClose ?? null;
     setSheetData(data);
     setIsSheetOpen(true);
   }, []);
 
   const closeToolCall = useCallback(() => {
+    const callback = closeCallbackRef.current;
+    closeCallbackRef.current = null;
+    callback?.();
     setIsSheetOpen(false);
   }, []);
 

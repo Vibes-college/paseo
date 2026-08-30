@@ -8,6 +8,7 @@ import { useProviderSettingsStore } from "@/stores/provider-settings-store";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceDraftSubmissionStore } from "@/stores/workspace-draft-submission-store";
 import { useWorkspaceSetupStore } from "@/stores/workspace-setup-store";
+import { clearRetainedSurfaceState } from "./retained-surface-state";
 
 interface ResettableStore {
   getInitialState(): unknown;
@@ -67,6 +68,7 @@ export function createPaseoAppOwner(): PaseoAppOwner {
       for (const store of transientStores) {
         store.setState(store.getInitialState(), true);
       }
+      clearRetainedSurfaceState();
       releaseRuntime();
       if (activeOwner === owner) {
         activeOwner = null;

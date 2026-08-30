@@ -23,6 +23,11 @@ import {
 } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { MAX_CONTENT_WIDTH, useIsCompactFormFactor } from "@/constants/layout";
+import { isEmbeddedPaseoApp } from "@/embedded/mount-environment";
+import {
+  getRetainedExpandedToolState,
+  setRetainedExpandedToolState,
+} from "@/embedded/retained-surface-state";
 import { useMutation } from "@tanstack/react-query";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Check, ChevronDown, X } from "lucide-react-native";
@@ -303,6 +308,34 @@ function resolveBottomOverlayControlOffset(clearance: number | undefined): numbe
   return Math.max(16, clearance ?? 0);
 }
 
+function useRetainedExpandedTools(key: string) {
+  const initial = isEmbeddedPaseoApp() ? getRetainedExpandedToolState(key) : null;
+  const [inlineToolCallIds, setInlineToolCallIds] = useState<Set<string>>(
+    () => initial?.inlineToolCallIds ?? new Set(),
+  );
+  const [toolCallGroupIds, setToolCallGroupIds] = useState<Set<string>>(
+    () => initial?.toolCallGroupIds ?? new Set(),
+  );
+
+  useEffect(() => {
+    const retained = isEmbeddedPaseoApp() ? getRetainedExpandedToolState(key) : null;
+    setInlineToolCallIds(retained?.inlineToolCallIds ?? new Set());
+    setToolCallGroupIds(retained?.toolCallGroupIds ?? new Set());
+  }, [key]);
+
+  useEffect(() => {
+    if (!isEmbeddedPaseoApp()) return;
+    setRetainedExpandedToolState(key, { inlineToolCallIds, toolCallGroupIds });
+  }, [inlineToolCallIds, key, toolCallGroupIds]);
+
+  return {
+    expandedInlineToolCallIds: inlineToolCallIds,
+    expandedToolCallGroupIds: toolCallGroupIds,
+    setExpandedInlineToolCallIds: setInlineToolCallIds,
+    setExpandedToolCallGroupIds: setToolCallGroupIds,
+  };
+}
+
 const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamViewProps>(
   function AgentStreamView(
     {
@@ -343,16 +376,16 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         }),
       [isMobile],
     );
-    const [isNearBottom, setIsNearBottom] = useState(true);
-    const [expandedInlineToolCallIds, setExpandedInlineToolCallIds] = useState<Set<string>>(
-      new Set(),
-    );
-    const [expandedToolCallGroupIds, setExpandedToolCallGroupIds] = useState<Set<string>>(
-      new Set(),
-    );
-
     // Get serverId (fallback to agent's serverId if not provided)
     const resolvedServerId = serverId ?? context.serverId ?? "";
+    const retainedToolStateKey = `${resolvedServerId}:${agentId}`;
+    const [isNearBottom, setIsNearBottom] = useState(true);
+    const {
+      expandedInlineToolCallIds,
+      expandedToolCallGroupIds,
+      setExpandedInlineToolCallIds,
+      setExpandedToolCallGroupIds,
+    } = useRetainedExpandedTools(retainedToolStateKey);
 
     const client = useSessionStore((state) => state.sessions[resolvedServerId]?.client ?? null);
     const sessionStreamHead = useSessionStore((state) =>
@@ -411,9 +444,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
 
     useEffect(() => {
       setIsNearBottom(true);
-      setExpandedInlineToolCallIds(new Set());
-      setExpandedToolCallGroupIds(new Set());
-    }, [agentId]);
+    }, [retainedToolStateKey]);
 
     const handleInlinePathPress = useStableEvent(
       (target: InlinePathTarget, disposition: OpenFileDisposition) => {
@@ -637,9 +668,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
 
     const setInlineDetailsExpanded = useCallback(
       (itemId: string, expanded: boolean) => {
-        if (!streamRenderStrategy.shouldDisableParentScrollOnInlineDetailsExpansion()) {
-          return;
-        }
         setExpandedInlineToolCallIds((previous) => {
           const next = new Set(previous);
           if (expanded) {
@@ -650,20 +678,23 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           return next;
         });
       },
-      [streamRenderStrategy],
+      [setExpandedInlineToolCallIds],
     );
 
-    const setToolCallGroupExpanded = useCallback((groupId: string, expanded: boolean) => {
-      setExpandedToolCallGroupIds((previous) => {
-        const next = new Set(previous);
-        if (expanded) {
-          next.add(groupId);
-        } else {
-          next.delete(groupId);
-        }
-        return next;
-      });
-    }, []);
+    const setToolCallGroupExpanded = useCallback(
+      (groupId: string, expanded: boolean) => {
+        setExpandedToolCallGroupIds((previous) => {
+          const next = new Set(previous);
+          if (expanded) {
+            next.add(groupId);
+          } else {
+            next.delete(groupId);
+          }
+          return next;
+        });
+      },
+      [setExpandedToolCallGroupIds],
+    );
 
     const renderUserMessageItem = useCallback(
       (layoutItem: StreamLayoutItem, item: Extract<StreamItem, { kind: "user_message" }>) => {
@@ -725,11 +756,11 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             text={item.text}
             status={item.status}
             isLastInSequence={layoutItem.isLastInToolSequence}
-            defaultExpanded={autoExpandReasoning}
+            defaultExpanded={autoExpandReasoning || expandedInlineToolCallIds.has(item.id)}
           />
         );
       },
-      [autoExpandReasoning, setInlineDetailsExpanded],
+      [autoExpandReasoning, expandedInlineToolCallIds, setInlineDetailsExpanded],
     );
 
     const renderSingleToolCallItem = useCallback(
@@ -758,6 +789,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             <ToolCallSlot
               itemId={item.id}
               onInlineDetailsExpandedChangeByItemId={setInlineDetailsExpanded}
+              defaultExpanded={expandedInlineToolCallIds.has(item.id)}
               toolName={data.name}
               error={data.error}
               status={data.status}
@@ -776,6 +808,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           <ToolCallSlot
             itemId={item.id}
             onInlineDetailsExpandedChangeByItemId={setInlineDetailsExpanded}
+            defaultExpanded={expandedInlineToolCallIds.has(item.id)}
             toolName={data.toolName}
             args={data.arguments}
             result={data.result}
@@ -786,7 +819,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           />
         );
       },
-      [context.cwd, setInlineDetailsExpanded, handleToolCallOpenFile],
+      [context.cwd, expandedInlineToolCallIds, setInlineDetailsExpanded, handleToolCallOpenFile],
     );
 
     const renderToolCallItem = useCallback(

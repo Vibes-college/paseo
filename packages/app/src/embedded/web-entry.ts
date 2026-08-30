@@ -1,6 +1,11 @@
 import * as metroRuntime from "@expo/metro-runtime";
 import { createPaseoHostShell, type PaseoHostShell } from "./compact-host-shell.web";
 import { mountPaseoApp, type MountedPaseoApp } from "./mount";
+import {
+  capturePaseoSurfaceRetention,
+  restorePaseoSurfaceRetention,
+  type PaseoSurfaceRetentionRestore,
+} from "./surface-retention.web";
 import type {
   PaseoHostActivity,
   PaseoMountCallbacks,
@@ -20,6 +25,7 @@ interface CompleteRootHarness {
     | (ReturnType<MountedPaseoApp["diagnostics"]> & {
         shell: ReturnType<PaseoHostShell["diagnostics"]>;
         minimizeRequestCount: number;
+        lastRetentionRestore: PaseoSurfaceRetentionRestore | null;
       })
     | null;
 }
@@ -56,12 +62,42 @@ let mounted: MountedPaseoApp | null = null;
 let shell: PaseoHostShell | null = null;
 let requestCount = 0;
 let minimizeRequestCount = 0;
+let lastRetentionRestore: PaseoSurfaceRetentionRestore | null = null;
 let releaseHostSentinel: () => void = () => undefined;
 
 const updateSurface = async (surface: PaseoSurface) => {
-  snapshot = { ...snapshot, surface };
+  const previousSurface = snapshot.surface;
+  const retention = capturePaseoSurfaceRetention();
+  shell?.restoreFromFab();
+  snapshot = {
+    surface,
+    activity: { ...snapshot.activity, visible: true, focused: true },
+  };
   shell?.setSurface(surface);
   await mounted?.update(snapshot);
+  lastRetentionRestore = await restorePaseoSurfaceRetention(retention);
+  if (previousSurface === "full" && surface === "compact") {
+    shell?.focusFullButton();
+  }
+};
+
+const minimizeToFab = async () => {
+  snapshot = {
+    ...snapshot,
+    activity: { ...snapshot.activity, visible: false, focused: false },
+  };
+  await mounted?.update(snapshot);
+  shell?.minimizeToFab();
+};
+
+const restoreFromFab = async () => {
+  shell?.restoreFromFab();
+  snapshot = {
+    surface: "compact",
+    activity: { ...snapshot.activity, visible: true, focused: true },
+  };
+  await mounted?.update(snapshot);
+  shell?.focusFullButton();
 };
 
 const reportFatal = (error: unknown) => {
@@ -82,6 +118,7 @@ const callbacks: PaseoMountCallbacks = {
   requestMinimize: () => {
     minimizeRequestCount += 1;
     hostRoot.dataset.paseoMinimizeRequestCount = String(minimizeRequestCount);
+    void minimizeToFab().catch(reportFatal);
   },
   surfaceCommitted: (surface) => {
     hostRoot.dataset.paseoCommittedSurface = surface;
@@ -89,6 +126,7 @@ const callbacks: PaseoMountCallbacks = {
   shellPresentationChanged: (presentation) => {
     hostRoot.dataset.paseoPresentationTitle = presentation.title;
     hostRoot.dataset.paseoPresentationState = presentation.state;
+    shell?.setPresentation(presentation);
   },
   firstCommit: () => {
     hostRoot.dataset.paseoFirstCommit = "true";
@@ -100,12 +138,14 @@ const callbacks: PaseoMountCallbacks = {
 };
 
 const start = async () => {
+  lastRetentionRestore = null;
   applyMountStyles();
   shell = createPaseoHostShell({
     root: hostRoot,
     initialSurface: snapshot.surface,
     onRequestSurface: callbacks.requestSurface,
     onRequestMinimize: callbacks.requestMinimize,
+    onRestoreCompact: () => void restoreFromFab().catch(reportFatal),
   });
   releaseHostSentinel =
     search.get("paseoHostSentinel") === "1" ? installHostSentinel(hostRoot) : () => undefined;
@@ -124,6 +164,7 @@ window.__paseoCompleteRootV1 = {
   ready,
   updateActivity: async (activity) => {
     await ready;
+    shell?.setHostVisible(activity.visible);
     snapshot = { ...snapshot, activity };
     await mounted?.update(snapshot);
   },
@@ -153,7 +194,12 @@ window.__paseoCompleteRootV1 = {
     const mountDiagnostics = mounted?.diagnostics();
     const shellDiagnostics = shell?.diagnostics();
     if (!mountDiagnostics || !shellDiagnostics) return null;
-    return { ...mountDiagnostics, shell: shellDiagnostics, minimizeRequestCount };
+    return {
+      ...mountDiagnostics,
+      shell: shellDiagnostics,
+      minimizeRequestCount,
+      lastRetentionRestore,
+    };
   },
 };
 
@@ -187,7 +233,7 @@ function installHostSentinel(root: HTMLElement): () => void {
   sentinel.textContent = "Host sentinel";
   Object.assign(sentinel.style, {
     position: "fixed",
-    right: "8px",
+    left: "8px",
     bottom: "8px",
     zIndex: "30000",
   });
