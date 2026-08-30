@@ -5,6 +5,7 @@ import { getDesktopHost } from "@/desktop/host";
 import { useWorkspaceStatusesForBadges } from "@/stores/session-store-hooks";
 import { deriveMacDockBadgeCountFromWorkspaceStatuses } from "@/utils/desktop-badge-state";
 import { isNative } from "@/constants/platform";
+import { isEmbeddedPaseoApp } from "@/embedded/mount-environment";
 
 type FaviconStatus = "none" | "running" | "attention";
 type ColorScheme = "dark" | "light";
@@ -101,7 +102,7 @@ export function useFaviconStatus() {
 
   // Listen for system color scheme changes
   useEffect(() => {
-    if (isNative || typeof window === "undefined") return;
+    if (isNative || typeof window === "undefined" || isEmbeddedPaseoApp()) return;
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
@@ -114,7 +115,7 @@ export function useFaviconStatus() {
 
   // Update favicon when agents or color scheme changes
   useEffect(() => {
-    if (isNative) return;
+    if (isNative || isEmbeddedPaseoApp()) return;
 
     const status = deriveFaviconStatus(agents);
     updateFavicon(status, colorScheme);

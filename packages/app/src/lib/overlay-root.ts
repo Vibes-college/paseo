@@ -23,8 +23,25 @@ import {
  * dropdown opened inside a modal therefore paints above that modal, while a
  * base dropdown remains below a modal opened over it.
  */
+let ownedOverlayRoot: HTMLElement | null = null;
+
+export function installOwnedOverlayRoot(root: HTMLElement): () => void {
+  if (ownedOverlayRoot && ownedOverlayRoot !== root) {
+    throw new Error("a Paseo overlay root owner is already installed");
+  }
+  ownedOverlayRoot = root;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (ownedOverlayRoot === root) {
+      ownedOverlayRoot = null;
+    }
+  };
+}
+
 export function getOverlayRoot(): HTMLElement {
-  let el = document.getElementById("overlay-root");
+  let el = ownedOverlayRoot ?? document.getElementById("overlay-root");
   if (!el) {
     el = document.createElement("div");
     el.id = "overlay-root";
@@ -109,6 +126,14 @@ function getTopWebOverlay(): WebOverlayEntry | undefined {
 
 export function hasActiveWebOverlay(): boolean {
   return getTopWebOverlay() !== undefined;
+}
+
+export function getWebOverlayDiagnostics() {
+  return {
+    ownedRootInstalled: ownedOverlayRoot !== null,
+    activeEntries: webOverlayEntries.length,
+    listenersAttached: webOverlayListenersAttached,
+  };
 }
 
 function getFocusableElements(scope: HTMLElement): HTMLElement[] {

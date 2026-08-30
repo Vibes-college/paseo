@@ -203,6 +203,8 @@ import {
   type WorkspaceFileOpenRequest,
 } from "@/workspace/file-open";
 import { RenderProfile } from "@/utils/render-profiler";
+import { isEmbeddedPaseoApp } from "@/embedded/mount-environment";
+import { PaseoRequestCompactButton } from "@/embedded/request-compact-button";
 import { useWorkspaceCheckoutStatus } from "@/screens/workspace/use-workspace-checkout-status";
 import { useHasPullRequest } from "@/panels/pull-request";
 
@@ -491,7 +493,7 @@ function WorkspaceDocumentTitleEffect({
 }) {
   const { t } = useTranslation();
   useEffect(() => {
-    if (isNative || typeof document === "undefined") {
+    if (isNative || typeof document === "undefined" || isEmbeddedPaseoApp()) {
       return;
     }
     const resolvedLabel = label.trim();
@@ -3455,7 +3457,13 @@ function WorkspaceScreenContent({
     [isMobile, canRenderDesktopPaneSplits],
   );
   useEffect(() => {
-    if (!isRouteFocused || isNative || typeof document === "undefined" || activeTabDescriptor) {
+    if (
+      !isRouteFocused ||
+      isNative ||
+      typeof document === "undefined" ||
+      isEmbeddedPaseoApp() ||
+      activeTabDescriptor
+    ) {
       return;
     }
     document.title = "Workspace";
@@ -3762,6 +3770,7 @@ function WorkspaceScreenContent({
             mobile
           />
         ) : null}
+        {!isMobile ? <PaseoRequestCompactButton /> : null}
       </View>
     ),
     [

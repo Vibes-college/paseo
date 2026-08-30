@@ -1376,6 +1376,7 @@ export class HostRuntimeStore {
   private storage: HostRuntimeStorage;
   private replicaCache: ReplicaCache;
   private readonly revokePushNotifications: typeof revokePushNotifications;
+  private disposed = false;
 
   constructor(input?: {
     deps?: HostRuntimeControllerDeps;
@@ -1387,6 +1388,21 @@ export class HostRuntimeStore {
     this.storage = input?.storage ?? AsyncStorage;
     this.replicaCache = new ReplicaCache(input?.replicaRowStore ?? createReplicaRowStore());
     this.revokePushNotifications = input?.revokePushNotifications ?? revokePushNotifications;
+  }
+
+  getOwnerDiagnostics() {
+    return {
+      controllerCount: this.controllers.size,
+      activeConnectionCount: Array.from(this.controllers.values()).filter((controller) =>
+        isHostRuntimeConnected(controller.getSnapshot()),
+      ).length,
+      hostCount: this.hosts.length,
+      serverListenerCount: Array.from(this.serverListeners.values()).reduce(
+        (count, listeners) => count + listeners.size,
+        0,
+      ),
+      globalListenerCount: this.globalListeners.size,
+    };
   }
 
   // --- Host registry ---
@@ -2320,6 +2336,28 @@ export class HostRuntimeStore {
     });
   }
 
+  async dispose(): Promise<void> {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.replicaCache.dispose();
+    for (const directory of this.directorySyncByServer.values()) {
+      directory.dispose();
+    }
+    this.directorySyncByServer.clear();
+    this.timelineReplicaByServer.clear();
+    const controllers = Array.from(this.controllers.values());
+    this.controllers.clear();
+    await Promise.all(controllers.map((controller) => controller.stop()));
+    for (const serverId of this.hosts.map((host) => host.serverId)) {
+      this.clearHostReplica(serverId);
+    }
+    this.hosts = [];
+    this.queuedAgentDrainInFlight.clear();
+    this.serverListeners.clear();
+    this.globalListeners.clear();
+    this.hostListListeners.clear();
+  }
+
   private emit(serverId: string): void {
     this.version += 1;
     const listeners = this.serverListeners.get(serverId);
@@ -2340,6 +2378,27 @@ export class HostRuntimeStore {
 
 let singletonHostRuntimeStore: HostRuntimeStore | null = null;
 const HOST_RUNTIME_STORE_GLOBAL_KEY = "__paseoHostRuntimeStore";
+
+export function installOwnedHostRuntimeStore(store: HostRuntimeStore): () => void {
+  const existing =
+    singletonHostRuntimeStore ?? Reflect.get(globalThis, HOST_RUNTIME_STORE_GLOBAL_KEY);
+  if (existing && existing !== store) {
+    throw new Error("a HostRuntimeStore owner is already installed");
+  }
+  singletonHostRuntimeStore = store;
+  Reflect.set(globalThis, HOST_RUNTIME_STORE_GLOBAL_KEY, store);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (singletonHostRuntimeStore === store) {
+      singletonHostRuntimeStore = null;
+    }
+    if (Reflect.get(globalThis, HOST_RUNTIME_STORE_GLOBAL_KEY) === store) {
+      Reflect.deleteProperty(globalThis, HOST_RUNTIME_STORE_GLOBAL_KEY);
+    }
+  };
+}
 
 export function getHostRuntimeStore(): HostRuntimeStore {
   if (singletonHostRuntimeStore) {

@@ -1,0 +1,23 @@
+diff --git a/node_modules/expo-router/build/global-state/router-store.js b/node_modules/expo-router/build/global-state/router-store.js
+index 05ad58f..0b96ce0 100644
+--- a/node_modules/expo-router/build/global-state/router-store.js
++++ b/node_modules/expo-router/build/global-state/router-store.js
+@@ -157,7 +157,7 @@ function useStore(context, linkingConfigOptions, serverUrl) {
+     });
+     if (routeNode) {
+         // We have routes, so get the linking config and the root component
+-        linking = (0, getLinkingConfig_1.getLinkingConfig)(routeNode, context, () => exports.store.getRouteInfo(), {
++        const generatedLinking = (0, getLinkingConfig_1.getLinkingConfig)(routeNode, context, () => exports.store.getRouteInfo(), {
+             metaOnly: linkingConfigOptions.metaOnly,
+             serverUrl,
+             redirects,
+@@ -165,6 +165,9 @@ function useStore(context, linkingConfigOptions, serverUrl) {
+             sitemap: config?.sitemap ?? true,
+             notFound: config?.notFound ?? true,
+         });
++        linking = linkingConfigOptions.enabled === false
++            ? { ...generatedLinking, enabled: false }
++            : generatedLinking;
+         rootComponent = (0, useScreens_1.getQualifiedRouteComponent)(routeNode);
+         // By default React Navigation is async and does not render anything in the first pass as it waits for `getInitialURL`
+         // This will cause static rendering to fail, which once performs a single pass.

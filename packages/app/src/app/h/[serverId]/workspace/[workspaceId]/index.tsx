@@ -36,6 +36,7 @@ import {
 import { prepareWorkspaceTab } from "@/utils/workspace-navigation";
 import { isNative, isWeb } from "@/constants/platform";
 import { RenderProfile } from "@/utils/render-profiler";
+import { isEmbeddedPaseoApp } from "@/embedded/mount-environment";
 
 function getParamValue(value: string | string[] | undefined): string {
   if (typeof value === "string") {
@@ -65,7 +66,7 @@ function getOpenIntentTarget(openIntent: WorkspaceOpenIntent): WorkspaceTabTarge
 }
 
 function stripOpenSearchParamFromBrowserUrl() {
-  if (!isWeb || typeof window === "undefined") {
+  if (!isWeb || typeof window === "undefined" || isEmbeddedPaseoApp()) {
     return;
   }
   const url = new URL(window.location.href);
@@ -121,7 +122,7 @@ function HostWorkspaceRouteContent() {
     isAgentOpenIntent && (!hasHydratedWorkspaces || !workspaceExists),
   );
   useEffect(() => {
-    if (!serverId || !workspaceId) {
+    if (!serverId || !workspaceId || isEmbeddedPaseoApp()) {
       return;
     }
     stripHostWorkspaceRouteEchoSearchFromBrowserUrlAfterCommit();

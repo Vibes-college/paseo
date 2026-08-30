@@ -807,6 +807,17 @@ export class ReplicaCache {
 
   private readonly clearLegacyCache: () => Promise<void>;
 
+  dispose(): void {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    this.activeServerIds.clear();
+    this.pendingUpserts.clear();
+    this.pendingDeletes.clear();
+    this.pendingDirectoryReplacements.clear();
+  }
+
   async readAgent(serverId: string, agentId: string): Promise<Agent | undefined> {
     const rows = await this.readRows(serverId, ["agent"], [agentId]);
     const row = rows[0];
