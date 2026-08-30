@@ -29,6 +29,7 @@
     "test:e2e:ui": "playwright test --ui",
     "build": "npm run build:web",
     "build:web": "npm --prefix ../.. run build:app-deps && expo export --platform web",
+    "build:web:embedded-module": "npm --prefix ../.. run build:app-deps && cross-env EXPO_PUBLIC_COMPLETE_ROOT_MODULE=true expo export --platform web --output-dir dist-embedded-module",
     "profile:composer-typing": "node ./scripts/profile-composer-typing.mjs",
     "profile:explorer-toggle": "node ./scripts/profile-explorer-toggle.mjs",
     "profile:side-pane": "playwright test --config playwright.profile.config.ts side-pane-performance.spec.ts",
