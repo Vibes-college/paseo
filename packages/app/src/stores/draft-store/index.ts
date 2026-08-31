@@ -47,6 +47,7 @@ interface DraftStoreActions {
     draftKey: string;
     lifecycle?: Exclude<DraftLifecycleState, "active">;
   }) => void;
+  clearVibesPageContext: () => void;
   attachWorkspaceFile: (input: {
     draftKey: string;
     attachment: WorkspaceFileComposerAttachment;
@@ -69,6 +70,19 @@ const draftPersistStorage = createDraftPersistStorage(
 
 export function flushDraftPersistStorage(): Promise<void> {
   return draftPersistStorage?.flush() ?? Promise.resolve();
+}
+
+function removeVibesPageContext(record: DraftRecord, nowMs: number): DraftRecord {
+  const attachments = record.input.attachments.filter(
+    (attachment) => attachment.kind !== "vibes_page_context",
+  );
+  if (attachments.length === record.input.attachments.length) return record;
+  return {
+    ...record,
+    input: { ...record.input, attachments },
+    updatedAt: nowMs,
+    version: record.version + 1,
+  };
 }
 
 function createDraftRecord(input: {
@@ -361,6 +375,26 @@ export const useDraftStore = create<DraftStore>()(
           return { drafts: nextDrafts };
         });
 
+        scheduleAttachmentGc();
+      },
+
+      clearVibesPageContext: () => {
+        set((state) => {
+          const nowMs = Date.now();
+          let changed = false;
+          const drafts = Object.fromEntries(
+            Object.entries(state.drafts).map(([draftKey, record]) => {
+              const next = removeVibesPageContext(record, nowMs);
+              if (next !== record) changed = true;
+              return [draftKey, next];
+            }),
+          );
+          const createModalDraft = state.createModalDraft
+            ? removeVibesPageContext(state.createModalDraft, nowMs)
+            : null;
+          if (createModalDraft !== state.createModalDraft) changed = true;
+          return changed ? { drafts, createModalDraft } : state;
+        });
         scheduleAttachmentGc();
       },
 
