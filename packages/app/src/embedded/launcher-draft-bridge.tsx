@@ -14,6 +14,7 @@ import {
   useWorkspaceLayoutStoreHydrated,
 } from "@/stores/workspace-layout-store";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
+import { isPaseoLaunchRequestApplied } from "./launcher-draft";
 import { usePaseoLaunchRequest } from "./mount-environment";
 
 type KeyboardActionDispatcher = ReturnType<typeof useKeyboardActionDispatcher>;
@@ -61,7 +62,13 @@ export function PaseoLauncherDraftBridge() {
   const draftTabRequestIdRef = useRef(0);
 
   useEffect(() => {
-    if (!request || request.id <= appliedRequestIdRef.current) return;
+    if (
+      !request ||
+      request.id <= appliedRequestIdRef.current ||
+      isPaseoLaunchRequestApplied(request)
+    ) {
+      return;
+    }
     if (!request.draft) {
       appliedRequestIdRef.current = request.id;
       return;

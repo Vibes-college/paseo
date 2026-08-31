@@ -239,4 +239,42 @@ describe("embedded Paseo Launcher draft", () => {
       attachments: [],
     });
   });
+
+  it("does not reapply one launch request after the Composer remounts", async () => {
+    const request = {
+      id: 13,
+      surface: "compact" as const,
+      draft: "只应用一次",
+      pageContext: unavailablePageContext,
+    };
+    const source = {
+      getSnapshot: () => request,
+      subscribe: () => () => undefined,
+    };
+    let saveCount = 0;
+    const drafts = {
+      hydrate: async () => ({ text: "", attachments: [] }),
+      save: () => {
+        saveCount += 1;
+      },
+    };
+
+    await expect(
+      applyPaseoLauncherDraft({
+        request,
+        draftKey: "agent:server-1:agent-1",
+        source,
+        drafts,
+      }),
+    ).resolves.toBe("applied");
+    await expect(
+      applyPaseoLauncherDraft({
+        request,
+        draftKey: "agent:server-1:agent-1",
+        source,
+        drafts,
+      }),
+    ).resolves.toBe("already_applied");
+    expect(saveCount).toBe(1);
+  });
 });

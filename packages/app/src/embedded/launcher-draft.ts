@@ -14,6 +14,12 @@ export interface PaseoLaunchSource {
   subscribe(listener: () => void): () => void;
 }
 
+const appliedLaunchRequests = new WeakSet<PaseoLaunchRequest>();
+
+export function isPaseoLaunchRequestApplied(request: PaseoLaunchRequest): boolean {
+  return appliedLaunchRequests.has(request);
+}
+
 interface PaseoLauncherDraftPort {
   hydrate(draftKey: string): Promise<DraftInput | undefined>;
   save(draftKey: string, draft: DraftInput): void;
@@ -24,8 +30,12 @@ export async function applyPaseoLauncherDraft(input: {
   draftKey: string;
   source: PaseoLaunchSource;
   drafts: PaseoLauncherDraftPort;
-}): Promise<"applied" | "stale"> {
-  if (!input.request.draft) return "applied";
+}): Promise<"already_applied" | "applied" | "stale"> {
+  if (isPaseoLaunchRequestApplied(input.request)) return "already_applied";
+  if (!input.request.draft) {
+    appliedLaunchRequests.add(input.request);
+    return "applied";
+  }
 
   const draft = await input.drafts.hydrate(input.draftKey);
   if (input.source.getSnapshot()?.id !== input.request.id) return "stale";
@@ -44,5 +54,6 @@ export async function applyPaseoLauncherDraft(input: {
     text: input.request.draft,
     attachments,
   });
+  appliedLaunchRequests.add(input.request);
   return "applied";
 }
