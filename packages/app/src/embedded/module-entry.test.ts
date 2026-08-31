@@ -29,6 +29,7 @@ describe("Complete Paseo embedded module entry", () => {
     ]);
     expect(config).toContain("EXPO_PUBLIC_COMPLETE_ROOT_BASE_URL");
     expect(config).toContain("baseUrl: completeRootModuleBaseUrl");
+    expect(config).toContain("/__paseo_development__");
     expect(packageJson).toContain('"build:web:embedded-module:production"');
     expect(packageJson).toContain("/vendor/paseo/complete-root-v1");
   });

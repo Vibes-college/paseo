@@ -11,7 +11,7 @@ const isFdroidBuild = process.env.PASEO_FDROID_BUILD === "1";
 const isProfileBuild = process.env.PASEO_PROFILE_BUILD === "1";
 const isCompleteRootModuleBuild = process.env.EXPO_PUBLIC_COMPLETE_ROOT_MODULE === "true";
 const completeRootModuleBaseUrl =
-  process.env.EXPO_PUBLIC_COMPLETE_ROOT_BASE_URL ?? "/__paseo_stage4__";
+  process.env.EXPO_PUBLIC_COMPLETE_ROOT_BASE_URL ?? "/__paseo_development__";
 
 if (
   isCompleteRootModuleBuild &&
