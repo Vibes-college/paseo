@@ -13,6 +13,7 @@ import {
   type PaseoMountSnapshot,
 } from "./mount-environment";
 import { getWebOverlayDiagnostics, installOwnedOverlayRoot } from "@/lib/overlay-root";
+import type { PaseoLaunchSource } from "./launcher-draft";
 
 const APP_KEY = "paseo-complete-root";
 const EMBEDDED_LINKING = { enabled: false } as const;
@@ -43,6 +44,7 @@ class ExternalMountController implements PaseoMountController {
     readonly initialPath: string,
     readonly overlayRoot: HTMLElement,
     readonly shellSlots: PaseoMountShellSlots | null,
+    readonly launchSource: PaseoLaunchSource | null,
     readonly callbacks: PaseoMountCallbacks,
     initial: PaseoMountSnapshot,
   ) {
@@ -84,6 +86,7 @@ export async function mountPaseoApp(input: {
   initial: PaseoMountSnapshot;
   initialPath?: string;
   shellSlots?: PaseoMountShellSlots;
+  launchSource?: PaseoLaunchSource;
   callbacks: PaseoMountCallbacks;
 }): Promise<MountedPaseoApp> {
   if (!input.container.isConnected) {
@@ -120,6 +123,7 @@ export async function mountPaseoApp(input: {
     normalizeInitialPath(input.initialPath),
     overlayRoot,
     input.shellSlots ?? null,
+    input.launchSource ?? null,
     input.callbacks,
     input.initial,
   );

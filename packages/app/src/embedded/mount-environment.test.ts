@@ -11,6 +11,7 @@ function controller(): PaseoMountController {
     initialPath: "/",
     overlayRoot: {} as HTMLElement,
     shellSlots: null,
+    launchSource: null,
     callbacks: {
       requestSurface: vi.fn(),
       requestMinimize: vi.fn(),
