@@ -27,8 +27,23 @@ import { AfterPaintPublication } from "@/composer/after-paint-publication";
 import { isWeb } from "@/constants/platform";
 import { applyPaseoLauncherDraft } from "@/embedded/launcher-draft";
 import { usePaseoLaunchRequest, usePaseoMountEnvironment } from "@/embedded/mount-environment";
+import { useKeyboardActionDispatcherOptional } from "@/keyboard/keyboard-action-dispatcher-context";
 
 const EMPTY_ATTACHMENTS: UserComposerAttachment[] = [];
+type KeyboardActionDispatcher = NonNullable<ReturnType<typeof useKeyboardActionDispatcherOptional>>;
+
+function focusLauncherComposer(dispatcher: KeyboardActionDispatcher): void {
+  let framesRemaining = 4;
+  function focus() {
+    dispatcher.dispatch({
+      id: "message-input.focus",
+      scope: "message-input",
+    });
+    framesRemaining -= 1;
+    if (framesRemaining > 0) requestAnimationFrame(focus);
+  }
+  requestAnimationFrame(focus);
+}
 
 type AttachmentUpdater =
   | UserComposerAttachment[]
@@ -74,6 +89,7 @@ export interface AgentInputDraft {
 export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDraft {
   const mountEnvironment = usePaseoMountEnvironment();
   const launcherRequest = usePaseoLaunchRequest();
+  const keyboardActions = useKeyboardActionDispatcherOptional();
   const composerOptions = input.composer ?? null;
   const formState = useAgentFormState({
     initialServerId: composerOptions?.initialServerId ?? null,
@@ -182,14 +198,20 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
       source,
       drafts: {
         hydrate: async () => ({ text, attachments }),
-        save: (_draftKey, nextDraft) => {
+        save: (nextDraftKey, nextDraft) => {
           appliedLauncherRequestIdRef.current = launcherRequest.id;
-          replaceText(nextDraft.text);
+          textPublication.cancel();
+          useDraftStore.getState().saveDraftInput({
+            draftKey: nextDraftKey,
+            draft: nextDraft,
+          });
+          publishTextReplacement(nextDraft.text);
         },
       },
     }).then((outcome) => {
       if (outcome === "stale") return undefined;
       appliedLauncherRequestIdRef.current = launcherRequest.id;
+      if (keyboardActions) focusLauncherComposer(keyboardActions);
       return undefined;
     });
   }, [
@@ -197,10 +219,12 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
     draftKey,
     input.acceptsLauncherDraft,
     isHydrated,
+    keyboardActions,
     launcherRequest,
     mountEnvironment,
-    replaceText,
+    publishTextReplacement,
     text,
+    textPublication,
   ]);
 
   const setAttachments = useCallback(

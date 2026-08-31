@@ -4,6 +4,7 @@ import {
   type UserComposerAttachment,
 } from "@/attachments/types";
 import { PluginResourceComposerAttachmentSchema } from "@/plugins/attachments";
+import { vibesPublicPageContextSchema } from "@/embedded/vibes-page-context";
 import { z } from "zod";
 
 export const DRAFT_STORE_VERSION = 5;
@@ -92,6 +93,10 @@ export const UserComposerAttachmentSchema: z.ZodType<UserComposerAttachment> = z
           endLine: z.number().int().positive(),
         }),
       ]),
+    }),
+    z.strictObject({
+      kind: z.literal("vibes_page_context"),
+      context: vibesPublicPageContextSchema,
     }),
     z.strictObject({ kind: z.literal("forge_issue"), item: IssueItemSchema }),
     z.strictObject({ kind: z.literal("forge_change_request"), item: ChangeRequestItemSchema }),
