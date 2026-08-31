@@ -4,6 +4,8 @@ import pino from "pino";
 import { Writable } from "node:stream";
 import net from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { spawn, type ChildProcess } from "node:child_process";
 import { Buffer } from "node:buffer";
 
@@ -24,6 +26,8 @@ import { WSOutboundMessageSchema } from "@getpaseo/protocol/messages";
 
 const nodeMajor = Number((process.versions.node ?? "0").split(".")[0] ?? "0");
 const shouldRunRelayE2e = process.env.FORCE_RELAY_E2E === "1" || nodeMajor < 25;
+const relayDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../relay");
+const wranglerCliPath = createRequire(path.join(relayDir, "package.json")).resolve("wrangler");
 
 function createCapturingLogger() {
   const lines: string[] = [];
@@ -184,12 +188,11 @@ async function waitForCapturedLog(
   let relayProcess: ChildProcess | null = null;
   let relayStdoutLines: string[] = [];
 
-  const startRelay = async (options: { useLocalRelay?: boolean } = {}) => {
+  const startRelay = async () => {
     relayStdoutLines = [];
     relayPort = await getAvailablePort();
-    const relayDir = path.resolve(process.cwd(), "../relay");
     const relayArgs = [
-      "wrangler",
+      wranglerCliPath,
       "dev",
       "--local",
       "--ip",
@@ -198,11 +201,12 @@ async function waitForCapturedLog(
       String(relayPort),
       "--live-reload=false",
       "--show-interactive-dev-session=false",
+      "--var",
+      "PASEO_RELAY_POC_MODE:local",
+      "--var",
+      "PASEO_RELAY_ALLOWED_HOSTS:127.0.0.1",
     ];
-    if (options.useLocalRelay) {
-      relayArgs.push("--var", "PASEO_RELAY_UPSTREAM:");
-    }
-    relayProcess = spawn("npx", relayArgs, {
+    relayProcess = spawn(process.execPath, relayArgs, {
       cwd: relayDir,
       env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
@@ -382,11 +386,11 @@ async function waitForCapturedLog(
     }
   }, 90000);
 
-  test("daemon closes a relay client that sends an unsupported handshake key", async () => {
+  test("relay rejects an unsupported handshake key before daemon application traffic", async () => {
     process.env.PASEO_PRIMARY_LAN_IP = "192.168.1.12";
 
     const { logger, lines } = createCapturingLogger();
-    await startRelay({ useLocalRelay: true });
+    await startRelay();
 
     const daemon = await createTestPaseoDaemon({
       listen: "127.0.0.1",
@@ -482,16 +486,12 @@ async function waitForCapturedLog(
       });
 
       expect(receivedServerInfo).toBe(false);
-      if (outcome.type === "closed") {
-        expect(outcome.code).toBeGreaterThan(0);
-      } else {
-        expect(outcome.error).toBeInstanceOf(Error);
-      }
-
-      const isRejectedHandshakeLog = (line: string) =>
-        line.includes("relay_e2ee_handshake_failed") && line.includes("Invalid peer public key");
-      await waitForCapturedLog(lines, isRejectedHandshakeLog);
-      expect(lines.some(isRejectedHandshakeLog)).toBe(true);
+      expect(outcome).toEqual({
+        type: "closed",
+        code: 1008,
+        reason: "invalid_handshake_key",
+      });
+      expect(lines.some((line) => line.includes("relay_e2ee_handshake_failed"))).toBe(false);
     } finally {
       await daemon.close();
       await stopRelay();

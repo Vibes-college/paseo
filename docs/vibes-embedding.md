@@ -27,4 +27,4 @@ Stage 6 completed the final real-daemon and Luna-only matrix from the Stage 5 ac
 
 Stage 7 source tag `vibes-stage7-accepted` / `30d60666` produces 39 byte-identical files from two clean builds at `/vendor/paseo/complete-root-v1`. VIBES product commit `819494b` admits Artifact digest `9fa1a0d4` with a canonical manifest, SRI, source/build receipts, Apache notices, a served-file allowlist, and a same-origin fail-closed loader. Cloudflare build/dry-run and an admitted-byte Luna smoke passed without deployment.
 
-Relay remains a separate later PoC. Production Release is still held by the unresolved browser Markdown resource-exhaustion advisory and exact Preview pointer retest; neither Stage authorizes a Production deployment.
+Relay is now an independent local PoC on `feature/vibes-relay-do-poc`; its pinned authority, threat model, evidence boundary, and official-route decision live in [vibes-relay-poc.md](vibes-relay-poc.md). The unresolved browser Markdown resource-exhaustion advisory, exact Preview pointer retest, and real Relay Preview gates still hold Production Release; neither Stage nor the local Relay PoC authorizes deployment.

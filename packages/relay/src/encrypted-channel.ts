@@ -98,7 +98,7 @@ function supportsBinaryCiphertext(message: E2EEHelloMessage | E2EEReadyMessage):
   return message.capabilities?.binaryCiphertext === true;
 }
 
-function buildInvalidHelloError(rawText: string, parsed?: unknown): Error {
+function buildInvalidHelloError(_rawText: string, parsed?: unknown): Error {
   const parsedRecord = isRecord(parsed) ? parsed : null;
   const rawType = parsedRecord?.type;
   function describeType(value: unknown): string {
@@ -108,11 +108,7 @@ function buildInvalidHelloError(rawText: string, parsed?: unknown): Error {
   }
   const receivedType = describeType(rawType);
   const hasKey = typeof parsedRecord?.key === "string" && parsedRecord.key.trim().length > 0;
-  const compact = rawText.replace(/\s+/g, " ").trim();
-  const preview = compact.length > 160 ? `${compact.slice(0, 157)}...` : compact;
-  return new Error(
-    `Invalid hello message (receivedType=${receivedType}, hasKey=${hasKey}, preview=${JSON.stringify(preview)})`,
-  );
+  return new Error(`Invalid hello message (receivedType=${receivedType}, hasKey=${hasKey})`);
 }
 
 const HANDSHAKE_RETRY_MS = 1000;

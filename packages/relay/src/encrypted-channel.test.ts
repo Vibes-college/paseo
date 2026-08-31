@@ -306,19 +306,24 @@ describe("EncryptedChannel", () => {
     expect(transport.close).toHaveBeenCalledWith(1011, "backlog send failed");
   });
 
-  it("fails handshake on invalid hello", async () => {
+  it("fails handshake without copying raw input into the error", async () => {
     const [daemonTransport] = createMockTransportPair();
-
     const daemonKeyPair = generateKeyPair();
-
     const daemonChannelPromise = createDaemonChannel(daemonTransport, daemonKeyPair);
+    const plaintextMarker = "relay-log-plaintext-must-not-appear";
 
-    // Send invalid hello
     setTimeout(() => {
-      daemonTransport.onmessage?.({ data: '{"type":"invalid"}', isBinary: false });
+      daemonTransport.onmessage?.({
+        data: JSON.stringify({ type: "invalid", payload: plaintextMarker }),
+        isBinary: false,
+      });
     }, 0);
 
-    await expect(daemonChannelPromise).rejects.toThrow("Invalid hello message");
+    const error = await daemonChannelPromise.catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain("Invalid hello message");
+    expect((error as Error).message).not.toContain(plaintextMarker);
+    expect((error as Error).message).not.toContain("preview=");
   });
 
   it("accepts duplicate hello from the same client without re-keying", async () => {

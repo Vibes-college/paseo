@@ -1,15 +1,19 @@
-name = "paseo-relay"
-account_id = "10ed39a1dbf316e30abd0c409bed40d6"
+name = "vibes-paseo-relay-do-poc"
 main = "src/cloudflare-adapter.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2026-07-02"
+workers_dev = false
+preview_urls = false
 
-routes = [{ pattern = "relay.paseo.sh", custom_domain = true }]
+# Safe checked-in state. Local tests override these values explicitly.
+# An isolated Cloudflare Preview must use mode=preview, an exact host allowlist,
+# and a RATE_LIMITER binding before /ready or /ws can pass.
+[vars]
+PASEO_RELAY_POC_MODE = "disabled"
+PASEO_RELAY_ALLOWED_HOSTS = ""
 
 [observability]
 enabled = true
-
-[vars]
-PASEO_RELAY_UPSTREAM = "https://paseo-relay-next.fly.dev"
+head_sampling_rate = 1
 
 [[durable_objects.bindings]]
 name = "RELAY"
