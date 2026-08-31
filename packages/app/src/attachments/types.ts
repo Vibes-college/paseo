@@ -4,6 +4,7 @@ import type {
   UploadedFileAttachment,
 } from "@getpaseo/protocol/messages";
 import type { PluginResourceComposerAttachment } from "@/plugins/attachments";
+import type { VibesPageContextAttachment } from "@/embedded/vibes-page-context";
 
 export type AttachmentStorageType = "web-indexeddb" | "desktop-file" | "native-file";
 
@@ -107,6 +108,7 @@ export type UserComposerAttachment =
   | { kind: "image"; metadata: AttachmentMetadata }
   | { kind: "file"; attachment: UploadedFileAttachment }
   | WorkspaceFileComposerAttachment
+  | VibesPageContextAttachment
   | PluginResourceComposerAttachment
   | { kind: "forge_issue"; item: ForgeSearchItem }
   | { kind: "forge_change_request"; item: ForgeSearchItem }

@@ -19,7 +19,7 @@ The milestone branches are audit anchors:
 | Final daemon/Luna matrix     | `feature/vibes-complete-root-stage6`       | `1f02f72b` |
 | Reproducible Artifact source | `feature/vibes-complete-root-stage7-build` | `30d60666` |
 
-VIBES owns FAB and Compact chrome, placement, VIBES route/history/inert/focus behavior, module admission, and logout coordination. Paseo owns its React root, Router, providers, Host discovery, credentials, Workspace, Agent, Session, Run, Timeline, Composer, Tool, Permission, Terminal, Explorer, stores, overlays, connections, and recovery. The boundary accepts only the container, surface/activity, an opaque Launcher draft source, shell slots, and opaque callbacks; Paseo resolves the active Composer without exposing Runtime identities to VIBES.
+VIBES owns FAB and Compact chrome, placement, VIBES route/history/inert/focus behavior, module admission, Public Page Context resolution, and logout coordination. Paseo owns its React root, Router, providers, Host discovery, credentials, Workspace, Agent, Session, Run, Timeline, Composer, Tool, Permission, Terminal, Explorer, stores, overlays, connections, and recovery. The boundary accepts only the container, surface/activity, an opaque Launcher source carrying an unsent draft plus bounded public page data, shell slots, and opaque callbacks. Paseo resolves the active Composer, renders/removes the context chip, and serializes retained context as explicitly untrusted text without exposing Runtime identities to VIBES.
 
 Do not restore the retired selected-surface Standalone root, `b926` Compact artifact, VIBES Runtime/Agent mirrors, iframe, profile endpoint, fallback, or compatibility adapter. Git history and the VIBES product handoff retain those decisions as historical evidence.
 
