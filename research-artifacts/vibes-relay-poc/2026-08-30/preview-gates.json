@@ -1,0 +1,25 @@
+{
+  "schema": "vibes-relay-poc-preview-gates/1",
+  "status": "not-run",
+  "productionMutation": false,
+  "previewDeployment": false,
+  "reason": "No one-time Cloudflare Preview deployment and cost-budget authorization was available. The checked-in Worker remains disabled with no account, route, workers.dev URL or Preview URL.",
+  "notRun": [
+    "isolated public hostname and TLS",
+    "real Durable Object eviction and hibernation billing",
+    "real Cloudflare Rate Limit binding",
+    "connected-client deploy replacement",
+    "slow-reader pressure and healthy-peer isolation",
+    "Cloudflare platform request-log leak scan",
+    "idle and active-client cost observation",
+    "physical mobile Wi-Fi/cellular and background sleep-wake"
+  ],
+  "localSubstitutesNotClaimedAsPreview": [
+    "constructor rehydration from WebSocket attachment and bounded storage",
+    "Wrangler process restart",
+    "two-second idle wake",
+    "network socket replacement",
+    "deterministic edge-rate adapter test",
+    "Cloudflare dry run"
+  ]
+}

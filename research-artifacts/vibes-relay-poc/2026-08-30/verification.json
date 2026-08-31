@@ -1,0 +1,55 @@
+{
+  "schema": "vibes-relay-poc-verification/1",
+  "status": "local-poc-verified-preview-held",
+  "tests": {
+    "relayPocFocused": "58/58 passed",
+    "isolatedDaemonE2E": "4/4 passed",
+    "cliRelayHostE2E": "1/1 passed",
+    "doBlackBoxFull": "12/12 passed",
+    "officialBlackBoxFull": "12/12 passed",
+    "doAfterRestart": "10/10 passed",
+    "officialAfterRestart": "10/10 passed",
+    "doIsolatedDaemon": "passed",
+    "officialIsolatedDaemon": "passed"
+  },
+  "staticGates": {
+    "targetedLint": "0 warnings, 0 errors",
+    "relayTypecheck": "passed",
+    "monorepoTypecheck": "passed",
+    "formatCheck": "4160 files passed",
+    "serverDependencyBuild": "passed",
+    "relayResolvedWs": "8.21.3",
+    "workspaceScopedRuntimeAudit": "6 findings: 1 low, 5 high, 0 critical; retained for closure review",
+    "cloudflareDryRun": "passed",
+    "cloudflareUploadKiB": 41.97,
+    "cloudflareGzipKiB": 9.47
+  },
+  "protocolGates": {
+    "v1": "passed",
+    "v2": "passed",
+    "v1V2Isolation": "passed-both-directions",
+    "daemonControlReplacement": "passed",
+    "routeKeyBoundary": "256 bytes accepted, 257 bytes rejected",
+    "e2eeHandshake": "passed",
+    "invalidX25519Key": "close 1008",
+    "maxDataPayloadBytes": 33554418,
+    "maxDataPayloadPlusOne": "close 1009",
+    "maxControlPayloadBytes": 65536,
+    "maxControlPayloadPlusOne": "close 1009",
+    "clientBeforeDaemon": "passed",
+    "multipleClients": "passed",
+    "sleepWake": "passed locally",
+    "networkReplacement": "passed locally",
+    "logCanary": "passed locally"
+  },
+  "notClaimed": [
+    "real Cloudflare Preview hibernation eviction",
+    "real Cloudflare deploy reconnect with open sockets",
+    "real Cloudflare Rate Limit binding",
+    "slow-reader delivery-pressure equivalence",
+    "actual Cloudflare cost",
+    "physical mobile network and background lifecycle",
+    "mixed executable pre-current app/daemon compatibility",
+    "Production readiness"
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "schema": "vibes-relay-poc-matrix/1",
+  "target": "do-local-restart",
+  "baseUrl": "http://127.0.0.1:8788",
+  "fullFrameBoundary": false,
+  "startedAt": "2026-08-31T05:18:57.709Z",
+  "finishedAt": "2026-08-31T05:19:00.948Z",
+  "cases": [
+    {
+      "id": "operations",
+      "status": "passed",
+      "durationMs": 19,
+      "detail": {
+        "health": 200,
+        "ready": 200,
+        "metrics": 200
+      }
+    },
+    {
+      "id": "v1-text-binary",
+      "status": "passed",
+      "durationMs": 10,
+      "detail": {
+        "textPreserved": true,
+        "binaryPreserved": true
+      }
+    },
+    {
+      "id": "v1-v2-isolation",
+      "status": "passed",
+      "durationMs": 515,
+      "detail": {
+        "isolatedBothDirections": true
+      }
+    },
+    {
+      "id": "v2-client-before-daemon",
+      "status": "passed",
+      "durationMs": 24,
+      "detail": {
+        "recoveredWithoutReconnect": true
+      }
+    },
+    {
+      "id": "v2-control-replacement",
+      "status": "passed",
+      "durationMs": 260,
+      "detail": {
+        "synchronized": true,
+        "staleControlSuppressed": true
+      }
+    },
+    {
+      "id": "v2-multiple-clients",
+      "status": "passed",
+      "durationMs": 71,
+      "detail": {
+        "clients": 2,
+        "lastClientOwnsDataLifetime": true,
+        "lastClientCloseCode": 1001
+      }
+    },
+    {
+      "id": "invalid-handshake-key",
+      "status": "passed",
+      "durationMs": 6,
+      "detail": {
+        "closeCode": 1008
+      }
+    },
+    {
+      "id": "route-key-limit",
+      "status": "passed",
+      "durationMs": 10,
+      "detail": {
+        "acceptedBytes": 256,
+        "rejectedBytes": 257,
+        "oversizedStatus": 400
+      }
+    },
+    {
+      "id": "sleep-wake",
+      "status": "passed",
+      "durationMs": 2008,
+      "detail": {
+        "idleMs": 2000,
+        "resumed": true
+      }
+    },
+    {
+      "id": "network-replacement",
+      "status": "passed",
+      "durationMs": 315,
+      "detail": {
+        "reconnected": true,
+        "staleRouteSuppressed": true
+      }
+    }
+  ],
+  "passed": 10,
+  "failed": 0
+}

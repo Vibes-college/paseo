@@ -1,0 +1,49 @@
+{
+  "schema": "vibes-relay-poc-authority/1",
+  "recordedAt": "2026-08-31T03:56:00.000Z",
+  "paseo": {
+    "repository": "https://github.com/Vibes-college/paseo",
+    "branch": "feature/vibes-relay-do-poc",
+    "branchPointCommit": "c03968c392a7e5c525184c1d04c3de1703dc7767",
+    "branchPointTree": "20a71d0a1e7643c7f258648bf040766a3975be1f",
+    "stage7SourceCommit": "30d60666938c3873b90f86f4ed84464dd6b33143",
+    "implementationCommit": "4ac43162c33e74ed51cfc1ce5d242b3e565c81ba",
+    "implementationTree": "7d1aff0d481524ba8e1fda3878a8f9edf8e3d9ac"
+  },
+  "officialRelay": {
+    "repository": "https://github.com/getpaseo/paseo-relay.git",
+    "commit": "3fc41c96c8c63f3a7109e832899cc57d473c4531",
+    "tree": "b9d008468867246e9baef11a469f48c2547c09b9",
+    "license": "Apache-2.0",
+    "releaseTag": null,
+    "mixLockSha256": "7d20808bbaa1f9d873e7314334a4d07e5f2c97ee6aba98968f75ee407a909398",
+    "containerImage": "vibes-relay-official-poc:3fc41c96",
+    "containerImageBuildIds": [
+      "sha256:b5715be21383f5242c83ab3d317d181765e3e62956fd8f819c592bb72d9b4800",
+      "sha256:f23c40728d63eadcd688c85e338d007da6378300fec8e7537b3ce16fd21656b6",
+      "sha256:e86ba0141b464470032a1b3bc9de72219233304a2caaef66f64af345bbc2ff85",
+      "sha256:6e7795c2fbb7ac0bbb321f9342b621daef583b07f20f2ef42822945d82d0ffea"
+    ]
+  },
+  "compatibilityReference": {
+    "preCurrentRoutingCommit": "6dad3212daf9d0b20675e53b6117fa5277e13462",
+    "tree": "998aa6ae232aa15f5e935eae82bb541af6782c61",
+    "note": "Retained as a future mixed app/daemon executable fixture; the completed black-box matrix verifies the official current v1 and v2 routing contracts."
+  },
+  "tools": {
+    "node": "v22.20.0",
+    "npm": "10.9.3",
+    "wrangler": "4.105.0",
+    "dockerServer": "28.5.1",
+    "paseoPackageLockSha256": "b78dcc3a36483d4a42f5339b6a3490f691b03dc1c99c77a1e7fde8925886c8eb"
+  },
+  "isolation": {
+    "doEndpoint": "127.0.0.1:8788",
+    "officialEndpoint": "127.0.0.1:8789",
+    "daemonPorts": "OS-assigned",
+    "mainDaemon6767Touched": false,
+    "productionDnsTouched": false,
+    "productionSecretRead": false,
+    "cloudflareDeployment": false
+  }
+}

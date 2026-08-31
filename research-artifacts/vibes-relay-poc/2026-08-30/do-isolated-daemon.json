@@ -1,0 +1,22 @@
+{
+  "schema": "vibes-relay-isolated-daemon-poc/1",
+  "target": "do-local",
+  "endpoint": "127.0.0.1:8788",
+  "startedAt": "2026-08-31T04:48:13.425Z",
+  "finishedAt": "2026-08-31T04:48:13.543Z",
+  "daemon": {
+    "isolatedPaseoHome": true,
+    "listenPort": 55966,
+    "mainDaemonPort": 6767
+  },
+  "journey": {
+    "pairingOffer": "generated-in-memory",
+    "e2ee": "established",
+    "serverInfo": "received",
+    "fetchAgents": "completed",
+    "initialAgentCount": 0,
+    "ping": "completed",
+    "pingRttMs": 1
+  },
+  "status": "passed"
+}

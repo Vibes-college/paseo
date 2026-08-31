@@ -1,0 +1,122 @@
+{
+  "schema": "vibes-relay-poc-matrix/1",
+  "target": "official-local-full",
+  "baseUrl": "http://127.0.0.1:8789",
+  "fullFrameBoundary": true,
+  "startedAt": "2026-08-31T05:12:20.669Z",
+  "finishedAt": "2026-08-31T05:12:24.340Z",
+  "cases": [
+    {
+      "id": "operations",
+      "status": "passed",
+      "durationMs": 21,
+      "detail": {
+        "health": 200,
+        "ready": 200,
+        "metrics": 200
+      }
+    },
+    {
+      "id": "v1-text-binary",
+      "status": "passed",
+      "durationMs": 7,
+      "detail": {
+        "textPreserved": true,
+        "binaryPreserved": true
+      }
+    },
+    {
+      "id": "v1-v2-isolation",
+      "status": "passed",
+      "durationMs": 513,
+      "detail": {
+        "isolatedBothDirections": true
+      }
+    },
+    {
+      "id": "v2-client-before-daemon",
+      "status": "passed",
+      "durationMs": 16,
+      "detail": {
+        "recoveredWithoutReconnect": true
+      }
+    },
+    {
+      "id": "v2-control-replacement",
+      "status": "passed",
+      "durationMs": 262,
+      "detail": {
+        "synchronized": true,
+        "staleControlSuppressed": true
+      }
+    },
+    {
+      "id": "v2-multiple-clients",
+      "status": "passed",
+      "durationMs": 69,
+      "detail": {
+        "clients": 2,
+        "lastClientOwnsDataLifetime": true,
+        "lastClientCloseCode": 1001
+      }
+    },
+    {
+      "id": "invalid-handshake-key",
+      "status": "passed",
+      "durationMs": 3,
+      "detail": {
+        "closeCode": 1008
+      }
+    },
+    {
+      "id": "route-key-limit",
+      "status": "passed",
+      "durationMs": 5,
+      "detail": {
+        "acceptedBytes": 256,
+        "rejectedBytes": 257,
+        "oversizedStatus": 400
+      }
+    },
+    {
+      "id": "sleep-wake",
+      "status": "passed",
+      "durationMs": 2007,
+      "detail": {
+        "idleMs": 2000,
+        "resumed": true
+      }
+    },
+    {
+      "id": "network-replacement",
+      "status": "passed",
+      "durationMs": 319,
+      "detail": {
+        "reconnected": true,
+        "staleRouteSuppressed": true
+      }
+    },
+    {
+      "id": "maximum-frame-boundary",
+      "status": "passed",
+      "durationMs": 445,
+      "detail": {
+        "acceptedBytes": 33554418,
+        "rejectedBytes": 33554419,
+        "closeCode": 1009
+      }
+    },
+    {
+      "id": "maximum-control-boundary",
+      "status": "passed",
+      "durationMs": 3,
+      "detail": {
+        "acceptedBytes": 65536,
+        "rejectedBytes": 65537,
+        "closeCode": 1009
+      }
+    }
+  ],
+  "passed": 12,
+  "failed": 0
+}

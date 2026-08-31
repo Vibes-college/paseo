@@ -1,0 +1,32 @@
+{
+  "schema": "vibes-relay-poc-log-leak-scan/1",
+  "targets": {
+    "doLocal": {
+      "source": "do-local.log.redacted.txt",
+      "sha256": "538938dec9dbc4d5c523dbe36eac2de547b241d79d8b5ab31d2ebed02324dc97",
+      "bytes": 7110,
+      "patterns": {
+        "connectionPrefix": 0,
+        "plaintextMarker": 0,
+        "serverIdField": 0,
+        "connectionIdField": 0,
+        "e2eeHello": 0
+      },
+      "passed": true
+    },
+    "officialLocal": {
+      "source": "official-local.log.redacted.txt",
+      "sha256": "f9299733ba72d1a69f118388ddeab574e02f66b91f9748efbf98ba7c31ccc8de",
+      "bytes": 551,
+      "patterns": {
+        "connectionPrefix": 0,
+        "plaintextMarker": 0,
+        "serverIdField": 0,
+        "connectionIdField": 0,
+        "e2eeHello": 0
+      },
+      "passed": true
+    }
+  },
+  "note": "Application-authored local target logs were retained and scanned. Cloudflare platform request-log query handling remains a Preview-only gate."
+}

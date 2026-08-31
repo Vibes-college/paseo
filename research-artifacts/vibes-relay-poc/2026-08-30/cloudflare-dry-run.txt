@@ -1,0 +1,11 @@
+
+ ⛅️ wrangler 4.105.0 (update available 4.127.1)
+───────────────────────────────────────────────
+Total Upload: 41.97 KiB / gzip: 9.47 KiB
+Your Worker has access to the following bindings:
+Binding                                                 Resource
+env.RELAY (RelayDurableObject)                          Durable Object
+env.PASEO_RELAY_POC_MODE ("disabled")                   Environment Variable
+env.PASEO_RELAY_ALLOWED_HOSTS ("")                      Environment Variable
+
+--dry-run: exiting now.

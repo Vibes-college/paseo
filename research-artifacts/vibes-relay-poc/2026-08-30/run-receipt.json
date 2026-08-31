@@ -1,0 +1,72 @@
+{
+  "schema": "vibes-relay-poc-run-receipt/1",
+  "recordedAt": "2026-08-31T05:00:00.000Z",
+  "commands": [
+    {
+      "purpose": "focused Relay policy, adapter, safety, E2EE and local Wrangler E2E",
+      "command": "npm run poc:verify --workspace=@getpaseo/relay",
+      "exitCode": 0,
+      "result": "58/58 passed"
+    },
+    {
+      "purpose": "isolated daemon through local DO Relay",
+      "command": "vitest run packages/server/src/server/daemon-e2e/relay-transport.e2e.test.ts --bail=1",
+      "exitCode": 0,
+      "result": "4/4 passed"
+    },
+    {
+      "purpose": "same full black-box matrix against local DO",
+      "command": "npm run poc:matrix --workspace=@getpaseo/relay -- --target do-local-full --base-url http://127.0.0.1:8788 --run-id do-local-full-20260830 --full-frame-boundary",
+      "exitCode": 0,
+      "result": "12/12 passed"
+    },
+    {
+      "purpose": "same full black-box matrix against pinned official Relay",
+      "command": "npm run poc:matrix --workspace=@getpaseo/relay -- --target official-local-full --base-url http://127.0.0.1:8789 --run-id official-local-full-20260830 --full-frame-boundary",
+      "exitCode": 0,
+      "result": "12/12 passed"
+    },
+    {
+      "purpose": "DO process-restart matrix",
+      "command": "npm run poc:matrix --workspace=@getpaseo/relay -- --target do-local-restart --base-url http://127.0.0.1:8788 --run-id do-local-restart-20260830",
+      "exitCode": 0,
+      "result": "10/10 passed"
+    },
+    {
+      "purpose": "official container-restart matrix",
+      "command": "npm run poc:matrix --workspace=@getpaseo/relay -- --target official-local-restart --base-url http://127.0.0.1:8789 --run-id official-local-restart-20260830",
+      "exitCode": 0,
+      "result": "10/10 passed"
+    },
+    {
+      "purpose": "current isolated daemon through both targets",
+      "command": "tsx packages/server/src/server/daemon-e2e/relay-poc-target.cli.ts --target <do-local|official-local> --endpoint <loopback-test-endpoint>",
+      "exitCode": 0,
+      "result": "both passed: pairing -> E2EE -> server_info -> fetchAgents -> ping"
+    },
+    {
+      "purpose": "Relay and daemon dependency build",
+      "command": "npm run build:server",
+      "exitCode": 0,
+      "result": "passed"
+    },
+    {
+      "purpose": "Cloudflare bundle without deployment",
+      "command": "npm exec --workspace=@getpaseo/relay --offline -- wrangler deploy --dry-run",
+      "exitCode": 0,
+      "result": "passed; no upload mutation"
+    }
+  ],
+  "officialSourceVerification": {
+    "repository": "https://github.com/getpaseo/paseo-relay.git",
+    "commit": "3fc41c96c8c63f3a7109e832899cc57d473c4531",
+    "tree": "b9d008468867246e9baef11a469f48c2547c09b9",
+    "verifiedBeforeEachDockerBuild": true
+  },
+  "safety": {
+    "productionDeploy": false,
+    "productionDns": false,
+    "productionSecrets": false,
+    "mainDaemon6767Touched": false
+  }
+}

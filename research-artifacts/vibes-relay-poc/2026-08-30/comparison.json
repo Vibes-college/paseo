@@ -1,0 +1,64 @@
+{
+  "schema": "vibes-relay-poc-comparison/1",
+  "status": "local-comparison-completed-preview-gates-held",
+  "sameBlackBoxMatrix": {
+    "cases": 12,
+    "doLocal": "12/12 passed",
+    "officialLocal": "12/12 passed",
+    "covered": [
+      "health-ready-metrics",
+      "v1-text-binary",
+      "v1-v2-isolation",
+      "v2-client-before-daemon",
+      "v2-control-replacement",
+      "v2-multiple-clients",
+      "invalid-x25519-key",
+      "256-byte-route-key-limit",
+      "sleep-wake",
+      "network-replacement",
+      "33554418-byte-data-frame-boundary",
+      "65536-byte-control-frame-boundary"
+    ]
+  },
+  "restartMatrix": {
+    "doLocalProcessRestart": "10/10 passed",
+    "officialContainerRestart": "10/10 passed",
+    "claimBoundary": "Fresh reconnect matrices passed after local process replacement; no transparent socket migration is claimed."
+  },
+  "isolatedDaemon": {
+    "doLocal": "passed",
+    "officialLocal": "passed",
+    "journey": "pairing offer -> E2EE -> server_info -> fetchAgents -> ping",
+    "agentProviderRun": false,
+    "mainDaemon6767Touched": false
+  },
+  "doAdvantages": [
+    "one globally addressed Durable Object per routing version and server identity",
+    "hibernation-compatible WebSocket tags and attachments",
+    "no BEAM cluster or deployment reroute adapter",
+    "disabled-by-default host isolation",
+    "per-session socket, connection, client, pending-byte, frame-rate and edge-rate gates"
+  ],
+  "officialAdvantages": [
+    "current Production authority with operating history",
+    "synchronous Writer delivery barrier and slow-consumer shedding",
+    "node-wide Capacity ledger, memory watermark and epoch fail-closed behavior",
+    "distributed ownership and deployment adapter contract",
+    "mature Prometheus metrics, readiness and incident runbook"
+  ],
+  "doUnresolved": [
+    "actual Cloudflare hibernation eviction and billed-duration evidence",
+    "real Cloudflare Rate Limit binding behavior",
+    "real Preview deploy replacement with connected clients",
+    "slow-reader behavior because Cloudflare WebSocket.send has no official Writer-equivalent completion barrier",
+    "actual Preview cost for idle, one-client, ten-client and abuse-ceiling scenarios",
+    "physical mobile Wi-Fi/cellular and background sleep-wake",
+    "mixed executable pre-current client/daemon combinations at commit 6dad3212"
+  ],
+  "routeDecision": {
+    "formalProductionRoute": "official-elixir-relay",
+    "cloudflareDoStatus": "promising-isolated-poc-not-production-authority",
+    "reason": "The local protocol matrix is equal, but the DO path has no real Cloudflare Preview evidence for delivery pressure, hibernation, deploy reconnect, edge rate limiting or cost. The official Relay already supplies the stronger production capacity and failure model.",
+    "productionAuthorized": false
+  }
+}

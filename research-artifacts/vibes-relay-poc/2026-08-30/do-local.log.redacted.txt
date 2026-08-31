@@ -1,0 +1,124 @@
+
+ ⛅️ wrangler 4.105.0 (update available 4.127.1)
+───────────────────────────────────────────────
+Your Worker has access to the following bindings:
+Binding                                                 Resource                  Mode
+env.RELAY (RelayDurableObject)                          Durable Object            local
+env.PASEO_RELAY_POC_MODE ("(hidden)")                   Environment Variable      local
+env.PASEO_RELAY_ALLOWED_HOSTS ("(hidden)")              Environment Variable      local
+
+⎔ Starting local server...
+[wrangler:info] Ready on http://127.0.0.1:8788
+[wrangler:info] GET /ready 200 OK (4ms)
+[wrangler:info] GET /health 200 OK (2ms)
+[wrangler:info] GET /ready 200 OK (1ms)
+[wrangler:info] GET /metrics 200 OK (1ms)
+[Relay DO] {"event":"socket_connected","version":1,"role":1}
+[Relay DO] {"event":"socket_connected","version":1,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (4ms)
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":1,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":1,"role":0}
+[Relay DO] {"event":"socket_connected","version":1,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[Relay DO] {"event":"socket_connected","version":1,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":1,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":1,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (3ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (6ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1m[Relay DO] {"event":"frame_rejected","code":1008}[0m
+
+
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (3ms)
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[wrangler:info] GET /ws 400 Bad Request (1ms)
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (4ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (1ms)
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (0ms)
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}
+[Relay DO] {"event":"socket_connected","version":2,"role":0}
+[wrangler:info] GET /ws 101 Switching Protocols (2ms)
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1m[Relay DO] {"event":"frame_rejected","code":1009}[0m
+
+
+[Relay DO] {"event":"socket_disconnected","version":2,"role":0}
+[Relay DO] {"event":"socket_connected","version":2,"role":1}
+[wrangler:info] GET /ws 101 Switching Protocols (3ms)
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1m[Relay DO] {"event":"frame_rejected","code":1009}[0m
+
+
+[Relay DO] {"event":"socket_disconnected","version":2,"role":1}

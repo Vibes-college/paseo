@@ -1,0 +1,22 @@
+{
+  "schema": "vibes-relay-poc-cleanup/1",
+  "status": "completed",
+  "ports": {
+    "6767": "free-untouched",
+    "8788": "free",
+    "8789": "free"
+  },
+  "services": {
+    "wranglerDoRelay": "stopped",
+    "officialRelayContainer": "stopped-and-removed"
+  },
+  "temporaryResources": {
+    "doState": "removed",
+    "officialSourceCheckout": "removed",
+    "dryRunBundles": "removed",
+    "officialDockerImage": "removed"
+  },
+  "productionMutation": false,
+  "productionSecretsRead": false,
+  "mainDaemon6767Touched": false
+}
