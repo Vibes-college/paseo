@@ -21,4 +21,6 @@ VIBES owns FAB and Compact chrome, placement, VIBES route/history/inert/focus be
 
 Do not restore the retired selected-surface Standalone root, `b926` Compact artifact, VIBES Runtime/Agent mirrors, iframe, profile endpoint, fallback, or compatibility adapter. Git history and the VIBES product handoff retain those decisions as historical evidence.
 
-Stage 6 reruns the final real-daemon and Luna-only matrix from the Stage 5 accepted line. Stage 7 builds the new reproducible artifact, provenance, license/notices, admission, CSP, and same-origin production loader. Neither stage authorizes a Production deployment.
+Stage 6 completed the final real-daemon and Luna-only matrix from the Stage 5 accepted line. The fresh standalone build found that `scripts/postinstall-patches.mjs` did not install the existing Expo Router no-linking patch, so commit `54d2e839` added the patch to every clean install and a targeted regression test. VIBES commit `7c2f9ff` restored the Host history methods and outer URL after module import. The 16/16 ego-browser matrix covered real Codex `GPT-5.6-Luna`, Tool, Terminal, Permission, Stop, reconnect, Compact/Full/FAB, routes, product regressions, and logout/remount. Tag `vibes-stage6-accepted` is the Stage 7 source anchor.
+
+Stage 7 builds the new reproducible artifact, provenance, license/notices, admission, CSP, and same-origin production loader from that Stage 6 anchor. Relay remains a separate later PoC. Neither Stage authorizes a Production deployment.
