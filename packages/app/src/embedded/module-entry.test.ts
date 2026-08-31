@@ -21,4 +21,15 @@ describe("Complete Paseo embedded module entry", () => {
     expect(postinstall).toContain('patchPrefix: "expo-router+"');
     expect(patch).toContain("enabled: false");
   });
+
+  it("builds Production modules at the admitted VIBES asset path", async () => {
+    const [config, packageJson] = await Promise.all([
+      readSource("../../app.config.js"),
+      readSource("../../package.json"),
+    ]);
+    expect(config).toContain("EXPO_PUBLIC_COMPLETE_ROOT_BASE_URL");
+    expect(config).toContain("baseUrl: completeRootModuleBaseUrl");
+    expect(packageJson).toContain('"build:web:embedded-module:production"');
+    expect(packageJson).toContain("/vendor/paseo/complete-root-v1");
+  });
 });
