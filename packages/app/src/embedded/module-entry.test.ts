@@ -11,4 +11,14 @@ describe("Complete Paseo embedded module entry", () => {
     expect(source).not.toMatch(/querySelector|createElement|AppRegistry\.runApplication/);
     expect(source).not.toMatch(/serverId|workspaceId|agentId|credential/);
   });
+
+  it("installs the Expo Router no-linking patch after every clean install", async () => {
+    const [postinstall, patch] = await Promise.all([
+      readSource("../../../../scripts/postinstall-patches.mjs"),
+      readSource("../../../../patches/expo-router+6.0.23.patch"),
+    ]);
+    expect(postinstall).toContain('nodeModulesPath: "node_modules/expo-router"');
+    expect(postinstall).toContain('patchPrefix: "expo-router+"');
+    expect(patch).toContain("enabled: false");
+  });
 });
