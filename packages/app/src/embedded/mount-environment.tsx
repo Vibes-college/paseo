@@ -1,3 +1,4 @@
+import type { PaseoLaunchRequest, PaseoLaunchSource } from "./launcher-draft";
 import {
   createContext,
   useContext,
@@ -49,6 +50,7 @@ export interface PaseoMountController {
   readonly initialPath: string;
   readonly overlayRoot: HTMLElement;
   readonly shellSlots: PaseoMountShellSlots | null;
+  readonly launchSource: PaseoLaunchSource | null;
   readonly callbacks: PaseoMountCallbacks;
   getSnapshot(): PaseoMountSnapshot;
   subscribe(listener: () => void): () => void;
@@ -104,6 +106,15 @@ export function usePaseoMountSnapshot(): PaseoMountSnapshot | null {
     controller?.subscribe ?? noopSubscribe,
     controller?.getSnapshot ?? nullSnapshot,
     controller?.getSnapshot ?? nullSnapshot,
+  );
+}
+
+export function usePaseoLaunchRequest(): PaseoLaunchRequest | null {
+  const source = usePaseoMountEnvironment()?.launchSource;
+  return useSyncExternalStore(
+    source?.subscribe ?? noopSubscribe,
+    source?.getSnapshot ?? nullSnapshot,
+    source?.getSnapshot ?? nullSnapshot,
   );
 }
 
