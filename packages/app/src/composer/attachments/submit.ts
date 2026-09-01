@@ -11,6 +11,7 @@ import {
 } from "@/utils/review-attachments";
 import { workspaceFileAttachmentToAgentAttachment } from "@/attachments/workspace-file";
 import { pluginResourceAttachmentToAgentAttachment } from "@/plugins/attachments";
+import { vibesPageContextToAgentAttachment } from "@/embedded/vibes-page-context";
 
 export type ComposerAttachmentSubmitFormat = "forge" | "legacy-github";
 
@@ -62,6 +63,11 @@ export function splitComposerAttachmentsForSubmit(
 
     if (attachment.kind === "plugin_resource") {
       agentAttachments.push(pluginResourceAttachmentToAgentAttachment(attachment));
+      continue;
+    }
+
+    if (attachment.kind === "vibes_page_context") {
+      agentAttachments.push(vibesPageContextToAgentAttachment(attachment.context));
       continue;
     }
 

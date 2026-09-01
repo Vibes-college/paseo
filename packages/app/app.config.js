@@ -10,6 +10,17 @@ const appVariant = process.env.APP_VARIANT ?? "production";
 const isFdroidBuild = process.env.PASEO_FDROID_BUILD === "1";
 const isProfileBuild = process.env.PASEO_PROFILE_BUILD === "1";
 const isCompleteRootModuleBuild = process.env.EXPO_PUBLIC_COMPLETE_ROOT_MODULE === "true";
+const completeRootModuleBaseUrl =
+  process.env.EXPO_PUBLIC_COMPLETE_ROOT_BASE_URL ?? "/__paseo_development__";
+
+if (
+  isCompleteRootModuleBuild &&
+  (!completeRootModuleBaseUrl.startsWith("/") || completeRootModuleBaseUrl.endsWith("/"))
+) {
+  throw new Error(
+    "EXPO_PUBLIC_COMPLETE_ROOT_BASE_URL must be an absolute path without a trailing slash",
+  );
+}
 
 const buildProfile = isFdroidBuild
   ? {
@@ -183,7 +194,7 @@ export default {
       typedRoutes: true,
       reactCompiler: true,
       autolinkingModuleResolution: true,
-      ...(isCompleteRootModuleBuild ? { baseUrl: "/__paseo_stage4__" } : {}),
+      ...(isCompleteRootModuleBuild ? { baseUrl: completeRootModuleBaseUrl } : {}),
     },
     extra: {
       fdroidBuild: isFdroidBuild,

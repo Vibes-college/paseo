@@ -1667,6 +1667,7 @@ export function NewWorkspaceScreen({
   );
   const chatDraft = useAgentInputDraft({
     draftKey,
+    acceptsLauncherDraft: true,
     composer: buildComposerConfig({
       serverId: selectedServerId,
       isConnected,

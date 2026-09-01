@@ -1,11 +1,8 @@
-import MarkdownIt from "markdown-it";
+import type MarkdownIt from "markdown-it";
+import { createSafeMarkdownParser } from "./markdown-render-budget";
 
 export function createAssistantMarkdownParser(): MarkdownIt {
-  const parser = new MarkdownIt({
-    html: false,
-    linkify: true,
-    typographer: true,
-  });
+  const parser = createSafeMarkdownParser();
   const defaultValidateLink = parser.validateLink.bind(parser);
 
   parser.validateLink = (url: string) =>

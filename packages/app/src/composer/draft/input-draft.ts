@@ -25,6 +25,25 @@ import { useDraftStore } from "@/stores/draft-store";
 import { toDraftInputIfReady } from "@/stores/draft-store/state";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
 import { isWeb } from "@/constants/platform";
+import { applyPaseoLauncherDraft } from "@/embedded/launcher-draft";
+import { usePaseoLaunchRequest, usePaseoMountEnvironment } from "@/embedded/mount-environment";
+import { useKeyboardActionDispatcherOptional } from "@/keyboard/keyboard-action-dispatcher-context";
+
+const EMPTY_ATTACHMENTS: UserComposerAttachment[] = [];
+type KeyboardActionDispatcher = NonNullable<ReturnType<typeof useKeyboardActionDispatcherOptional>>;
+
+function focusLauncherComposer(dispatcher: KeyboardActionDispatcher): void {
+  let framesRemaining = 4;
+  function focus() {
+    dispatcher.dispatch({
+      id: "message-input.focus",
+      scope: "message-input",
+    });
+    framesRemaining -= 1;
+    if (framesRemaining > 0) requestAnimationFrame(focus);
+  }
+  requestAnimationFrame(focus);
+}
 
 type AttachmentUpdater =
   | UserComposerAttachment[]
@@ -42,6 +61,7 @@ interface AgentInputDraftComposerOptions {
 interface UseAgentInputDraftInput {
   draftKey: DraftKeyInput;
   composer?: AgentInputDraftComposerOptions;
+  acceptsLauncherDraft?: boolean;
 }
 
 type DraftComposerState = UseAgentFormStateResult & {
@@ -67,6 +87,9 @@ export interface AgentInputDraft {
 }
 
 export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDraft {
+  const mountEnvironment = usePaseoMountEnvironment();
+  const launcherRequest = usePaseoLaunchRequest();
+  const keyboardActions = useKeyboardActionDispatcherOptional();
   const composerOptions = input.composer ?? null;
   const formState = useAgentFormState({
     initialServerId: composerOptions?.initialServerId ?? null,
@@ -90,8 +113,9 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
   );
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const text = draft?.text ?? "";
-  const attachments = draft?.attachments ?? [];
+  const attachments = draft?.attachments ?? EMPTY_ATTACHMENTS;
   const isHydrated = hydratedDraftKey === draftKey;
+  const appliedLauncherRequestIdRef = useRef(0);
   const textReplacementRevisionRef = useRef(0);
   const [textReplacement, setTextReplacement] = useState<TextReplacement>(() => ({
     key: `${draftKey}:0`,
@@ -155,6 +179,53 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
     },
     [publishTextReplacement, saveDraft, textPublication],
   );
+
+  useEffect(() => {
+    const source = mountEnvironment?.launchSource;
+    if (
+      !input.acceptsLauncherDraft ||
+      !isHydrated ||
+      !source ||
+      !launcherRequest ||
+      launcherRequest.id <= appliedLauncherRequestIdRef.current
+    ) {
+      return;
+    }
+
+    void applyPaseoLauncherDraft({
+      request: launcherRequest,
+      draftKey,
+      source,
+      drafts: {
+        hydrate: async () => ({ text, attachments }),
+        save: (nextDraftKey, nextDraft) => {
+          appliedLauncherRequestIdRef.current = launcherRequest.id;
+          textPublication.cancel();
+          useDraftStore.getState().saveDraftInput({
+            draftKey: nextDraftKey,
+            draft: nextDraft,
+          });
+          publishTextReplacement(nextDraft.text);
+        },
+      },
+    }).then((outcome) => {
+      if (outcome === "stale") return undefined;
+      appliedLauncherRequestIdRef.current = launcherRequest.id;
+      if (keyboardActions) focusLauncherComposer(keyboardActions);
+      return undefined;
+    });
+  }, [
+    attachments,
+    draftKey,
+    input.acceptsLauncherDraft,
+    isHydrated,
+    keyboardActions,
+    launcherRequest,
+    mountEnvironment,
+    publishTextReplacement,
+    text,
+    textPublication,
+  ]);
 
   const setAttachments = useCallback(
     (updater: AttachmentUpdater) => {

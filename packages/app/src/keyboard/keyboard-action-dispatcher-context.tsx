@@ -19,8 +19,12 @@ export function KeyboardActionDispatcherProvider({ children }: { children: React
   );
 }
 
+export function useKeyboardActionDispatcherOptional(): KeyboardActionDispatcher | null {
+  return useContext(KeyboardActionDispatcherContext);
+}
+
 export function useKeyboardActionDispatcher(): KeyboardActionDispatcher {
-  const dispatcher = useContext(KeyboardActionDispatcherContext);
+  const dispatcher = useKeyboardActionDispatcherOptional();
   if (!dispatcher) {
     throw new Error("useKeyboardActionDispatcher must be used within its provider");
   }

@@ -1295,6 +1295,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     archiveFinishedStatus: archiveFinishedSubagents.status,
   });
   const rawAgentInputDraft = useAgentInputDraft({
+    acceptsLauncherDraft: isPaneFocused,
     draftKey: buildDraftStoreKey({
       serverId,
       agentId,

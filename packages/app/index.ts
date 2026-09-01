@@ -9,12 +9,17 @@ polyfillScreenOrientation();
 // Configure Unistyles before Expo Router pulls in any components using StyleSheet.
 import "./src/styles/unistyles";
 
+const isE2ECompleteRootMount =
+  typeof window !== "undefined" &&
+  process.env.EXPO_PUBLIC_E2E === "true" &&
+  new URLSearchParams(window.location.search).has("paseoPath");
+
 if (typeof document !== "undefined" && process.env.EXPO_PUBLIC_COMPLETE_ROOT_MODULE === "true") {
   const moduleEntry = require("./src/embedded/module-entry");
   void moduleEntry;
 } else if (
   typeof document !== "undefined" &&
-  process.env.EXPO_PUBLIC_COMPLETE_ROOT_MOUNT === "true"
+  (process.env.EXPO_PUBLIC_COMPLETE_ROOT_MOUNT === "true" || isE2ECompleteRootMount)
 ) {
   const embeddedEntry = require("./src/embedded/web-entry");
   void embeddedEntry;

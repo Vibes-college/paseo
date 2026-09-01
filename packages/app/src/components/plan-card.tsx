@@ -1,10 +1,15 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type ComponentProps, type ComponentType, type ReactNode } from "react";
 import { Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import Markdown, { type ASTNode } from "react-native-markdown-display";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import { createMarkdownStyles } from "@/styles/markdown-styles";
 import { getMarkdownListMarker } from "@/utils/markdown-list";
+import {
+  MAX_MARKDOWN_TOP_LEVEL_CHILDREN,
+  constrainMarkdownForRender,
+  createSafeMarkdownParser,
+} from "@/utils/markdown-render-budget";
 
 type MarkdownRuleStyles = Record<string, TextStyle & ViewStyle & { [key: string]: unknown }>;
 
@@ -174,6 +179,14 @@ function createPlanMarkdownRules() {
   };
 }
 
+const planMarkdownParser = createSafeMarkdownParser();
+const PlanMarkdown = Markdown as ComponentType<
+  ComponentProps<typeof Markdown> & {
+    markdownit?: ReturnType<typeof createSafeMarkdownParser>;
+    maxTopLevelChildren?: number;
+  }
+>;
+
 export function PlanCard({
   title,
   description,
@@ -193,6 +206,7 @@ export function PlanCard({
   const { t } = useTranslation();
   const markdownStyles = createMarkdownStyles(theme);
   const markdownRules = createPlanMarkdownRules();
+  const renderText = useMemo(() => constrainMarkdownForRender(text).text, [text]);
   const resolvedTitle = title ?? t("agentStream.permission.plan");
 
   const containerStyle = useMemo(
@@ -219,9 +233,14 @@ export function PlanCard({
     <View testID={testID} style={containerStyle}>
       <Text style={titleStyle}>{resolvedTitle}</Text>
       {description ? <Text style={descriptionStyle}>{description}</Text> : null}
-      <Markdown style={markdownStyles} rules={markdownRules}>
-        {text}
-      </Markdown>
+      <PlanMarkdown
+        style={markdownStyles}
+        rules={markdownRules}
+        markdownit={planMarkdownParser}
+        maxTopLevelChildren={MAX_MARKDOWN_TOP_LEVEL_CHILDREN}
+      >
+        {renderText}
+      </PlanMarkdown>
       {footer ? <View style={styles.footer}>{footer}</View> : null}
     </View>
   );

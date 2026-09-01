@@ -28,6 +28,7 @@ import {
   AudioLines,
   CircleDot,
   FileText,
+  Globe2,
   GitPullRequest,
   Image as ImageIcon,
   ClipboardPaste,
@@ -126,6 +127,7 @@ import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/com
 import { AttachmentLabel, AttachmentPill, AttachmentThumbnail } from "@/components/attachment-pill";
 import { AttachmentLightbox } from "@/components/attachment-lightbox";
 import { openExternalUrl } from "@/utils/open-external-url";
+import { getVibesPageContextTitle } from "@/embedded/vibes-page-context";
 import { useIsDictationReady } from "@/hooks/use-is-dictation-ready";
 import { useForgeSearchQuery } from "@/git/use-forge-search-query";
 import { useCheckoutStatusQuery } from "@/git/use-status-query";
@@ -333,6 +335,9 @@ interface RenderAttachmentTrayArgs {
     openImage: string;
     removeImage: string;
     removeFile: string;
+    vibesPage: string;
+    openVibesPage: (title: string) => string;
+    removeVibesPage: (title: string) => string;
     openGithub: (kind: string, numberLabel: string) => string;
     removeGithub: (kind: string, numberLabel: string) => string;
   };
@@ -437,6 +442,20 @@ function renderComposerAttachmentPill(args: RenderComposerAttachmentPillArgs): R
         disabled={disabled}
         onRemove={onRemove}
         removeLabel={labels.removeFile}
+      />
+    );
+  }
+  if (attachment.kind === "vibes_page_context") {
+    return (
+      <VibesPageContextAttachmentPill
+        key={`vibes-page:${attachment.context.epoch}`}
+        attachment={attachment}
+        index={index}
+        disabled={disabled}
+        onRemove={onRemove}
+        subtitle={labels.vibesPage}
+        openLabel={labels.openVibesPage}
+        removeLabel={labels.removeVibesPage}
       />
     );
   }
@@ -786,6 +805,43 @@ function GithubAttachmentPill({
         title={item.title}
         subtitle={`${subtitleKind} ${numberPrefix}${item.number}`}
       />
+    </AttachmentPill>
+  );
+}
+
+interface VibesPageContextAttachmentPillProps {
+  attachment: Extract<ComposerAttachment, { kind: "vibes_page_context" }>;
+  index: number;
+  disabled: boolean;
+  onRemove: (index: number) => void;
+  subtitle: string;
+  openLabel: (title: string) => string;
+  removeLabel: (title: string) => string;
+}
+
+function VibesPageContextAttachmentPill({
+  attachment,
+  index,
+  disabled,
+  onRemove,
+  subtitle,
+  openLabel,
+  removeLabel,
+}: VibesPageContextAttachmentPillProps) {
+  const title = getVibesPageContextTitle(attachment.context);
+  const handleRemove = useCallback(() => {
+    onRemove(index);
+  }, [index, onRemove]);
+  return (
+    <AttachmentPill
+      testID="composer-vibes-page-context-pill"
+      onOpen={noopCallback}
+      onRemove={handleRemove}
+      openAccessibilityLabel={openLabel(title)}
+      removeAccessibilityLabel={removeLabel(title)}
+      disabled={disabled}
+    >
+      <AttachmentLabel icon={vibesPagePillIcon} title={title} subtitle={subtitle} />
     </AttachmentPill>
   );
 }
@@ -2194,6 +2250,9 @@ function ComposerContentImpl({
           openImage: t("composer.attachments.openImage"),
           removeImage: t("composer.attachments.removeImage"),
           removeFile: t("composer.attachments.removeFile"),
+          vibesPage: t("composer.attachments.vibesPage"),
+          openVibesPage: (title: string) => t("composer.attachments.openVibesPage", { title }),
+          removeVibesPage: (title: string) => t("composer.attachments.removeVibesPage", { title }),
           openGithub: (kind: string, numberLabel: string) =>
             t("composer.attachments.openGithub", { kind, number: numberLabel }),
           removeGithub: (kind: string, numberLabel: string) =>
@@ -2503,6 +2562,7 @@ const ThemedPaperclip = withUnistyles(Paperclip);
 const ThemedImageIcon = withUnistyles(ImageIcon);
 const ThemedClipboardPaste = withUnistyles(ClipboardPaste);
 const ThemedFileText = withUnistyles(FileText);
+const ThemedGlobe = withUnistyles(Globe2);
 const iconForegroundMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const iconForegroundMutedMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const iconAccentForegroundMapping = (theme: Theme) => ({ color: theme.colors.accentForeground });
@@ -2520,3 +2580,4 @@ const githubIssuePillIcon = (
   <ThemedCircleDot size={ICON_SIZE.sm} uniProps={iconForegroundMutedMapping} />
 );
 const filePillIcon = <ThemedFileText size={ICON_SIZE.sm} uniProps={iconForegroundMutedMapping} />;
+const vibesPagePillIcon = <ThemedGlobe size={ICON_SIZE.sm} uniProps={iconForegroundMutedMapping} />;

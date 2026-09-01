@@ -96,6 +96,7 @@ import { useStableEvent } from "@/hooks/use-stable-event";
 import { useOpenAgentListGesture } from "@/mobile-panels/gestures";
 import { MobilePanelsProvider } from "@/mobile-panels/provider";
 import { I18nProvider } from "@/i18n/provider";
+import { PaseoLauncherDraftBridge } from "@/embedded/launcher-draft-bridge";
 import {
   KeyboardActionDispatcherProvider,
   useKeyboardActionDispatcher,
@@ -917,6 +918,7 @@ function AppShell() {
       <HorizontalScrollProvider>
         <OpenProjectListener />
         <AgentNavigationListener />
+        <PaseoLauncherDraftBridge />
         <AppWithSidebar>
           <WorkspaceRouteNavigationBridge />
           <RootStack />

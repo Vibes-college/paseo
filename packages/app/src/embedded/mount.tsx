@@ -13,12 +13,15 @@ import {
   type PaseoMountSnapshot,
 } from "./mount-environment";
 import { getWebOverlayDiagnostics, installOwnedOverlayRoot } from "@/lib/overlay-root";
+import { flushDraftPersistStorage, useDraftStore } from "@/stores/draft-store";
+import type { PaseoLaunchSource } from "./launcher-draft";
 
 const APP_KEY = "paseo-complete-root";
 const EMBEDDED_LINKING = { enabled: false } as const;
 
 export interface MountedPaseoApp {
   update(next: PaseoMountSnapshot): Promise<void>;
+  clearVibesPageContext(): Promise<void>;
   dispose(): Promise<void>;
   diagnostics(): PaseoMountDiagnostics;
 }
@@ -43,6 +46,7 @@ class ExternalMountController implements PaseoMountController {
     readonly initialPath: string,
     readonly overlayRoot: HTMLElement,
     readonly shellSlots: PaseoMountShellSlots | null,
+    readonly launchSource: PaseoLaunchSource | null,
     readonly callbacks: PaseoMountCallbacks,
     initial: PaseoMountSnapshot,
   ) {
@@ -84,6 +88,7 @@ export async function mountPaseoApp(input: {
   initial: PaseoMountSnapshot;
   initialPath?: string;
   shellSlots?: PaseoMountShellSlots;
+  launchSource?: PaseoLaunchSource;
   callbacks: PaseoMountCallbacks;
 }): Promise<MountedPaseoApp> {
   if (!input.container.isConnected) {
@@ -120,6 +125,7 @@ export async function mountPaseoApp(input: {
     normalizeInitialPath(input.initialPath),
     overlayRoot,
     input.shellSlots ?? null,
+    input.launchSource ?? null,
     input.callbacks,
     input.initial,
   );
@@ -128,12 +134,24 @@ export async function mountPaseoApp(input: {
   let application: { unmount(): void } | null = null;
   let disposed = false;
   let queueTail = Promise.resolve();
+  let pendingVibesContextClear = Promise.resolve();
+  let previousLaunchRequest = input.launchSource?.getSnapshot() ?? null;
+  const releaseLaunchContextClear =
+    input.launchSource?.subscribe(() => {
+      const nextLaunchRequest = input.launchSource?.getSnapshot() ?? null;
+      if (previousLaunchRequest && !nextLaunchRequest) {
+        useDraftStore.getState().clearVibesPageContext();
+        pendingVibesContextClear = flushDraftPersistStorage();
+      }
+      previousLaunchRequest = nextLaunchRequest;
+    }) ?? (() => undefined);
 
   try {
     releaseController = installPaseoMountController(controller);
     releaseOverlayRoot = installOwnedOverlayRoot(overlayRoot);
     application = runApplication(appNode, controller);
   } catch (error) {
+    releaseLaunchContextClear();
     releaseOverlayRoot?.();
     releaseController?.();
     appNode.remove();
@@ -160,6 +178,8 @@ export async function mountPaseoApp(input: {
     enqueue(async () => {
       if (disposed) return;
       disposed = true;
+      releaseLaunchContextClear();
+      await pendingVibesContextClear;
       application?.unmount();
       application = null;
       await owner.dispose();
@@ -178,6 +198,12 @@ export async function mountPaseoApp(input: {
           throw new Error("the Complete Paseo App mount is disposed");
         }
         controller.update(next);
+      }),
+    clearVibesPageContext: () =>
+      enqueue(async () => {
+        if (disposed) return;
+        useDraftStore.getState().clearVibesPageContext();
+        await flushDraftPersistStorage();
       }),
     dispose,
     diagnostics: () => ({

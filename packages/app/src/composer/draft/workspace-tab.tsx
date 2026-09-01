@@ -369,6 +369,7 @@ export function WorkspaceDraftAgentTab({
   );
   const draftInput = useAgentInputDraft({
     draftKey: draftStoreKey,
+    acceptsLauncherDraft: isPaneFocused,
     composer: {
       initialServerId: serverId,
       initialValues: draftInitialValues,

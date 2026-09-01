@@ -30,6 +30,11 @@ import { getMarkdownListMarker, getMarkdownListSpacing } from "@/utils/markdown-
 import { markdownNodeContainsType } from "@/utils/markdown-ast";
 import { createCompactMarkdownStyles, createMarkdownStyles } from "@/styles/markdown-styles";
 import type { Theme } from "@/styles/theme";
+import {
+  MAX_MARKDOWN_TOP_LEVEL_CHILDREN,
+  constrainMarkdownForRender,
+  createSafeMarkdownParser,
+} from "@/utils/markdown-render-budget";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { isNative } from "@/constants/platform";
 import {
@@ -51,6 +56,7 @@ interface MarkdownWithStableRendererProps {
   markdownit?: ReturnType<typeof MarkdownIt>;
   onLinkPress?: (url: string) => boolean;
   allowedImageHandlers?: readonly string[];
+  maxTopLevelChildren?: number;
   topLevelMaxExceededItem?: ReactNode;
 }
 
@@ -65,7 +71,7 @@ function compactMarkdownStyleMapping(theme: Theme): Partial<MarkdownWithStableRe
   return { style: createCompactMarkdownStyles(theme) };
 }
 
-const defaultMarkdownParser = MarkdownIt({ typographer: true, linkify: true });
+const defaultMarkdownParser = createSafeMarkdownParser();
 const EMPTY_TEXT_STYLE: TextStyle = {};
 const MARKDOWN_LIST_ITEM_CONTENT_FLEX: ViewStyle = { flex: 1, flexShrink: 1, minWidth: 0 };
 export interface MarkdownRendererProps {
@@ -89,10 +95,14 @@ export function MarkdownRenderer({
   topLevelMaxExceededItem,
   enableHtmlish = true,
 }: MarkdownRendererProps) {
+  const renderText = useMemo(() => constrainMarkdownForRender(text).text, [text]);
   const markdownRules = useMemo(() => rules ?? createSharedMarkdownRules(), [rules]);
   const parts = useMemo(
-    () => (enableHtmlish ? splitHtmlishMarkdown(text) : [{ kind: "markdown" as const, text }]),
-    [enableHtmlish, text],
+    () =>
+      enableHtmlish
+        ? splitHtmlishMarkdown(renderText)
+        : [{ kind: "markdown" as const, text: renderText }],
+    [enableHtmlish, renderText],
   );
   const rendererProps = useMemo(
     () => ({
@@ -205,6 +215,7 @@ function MarkdownFragment({
       markdownit={markdownit}
       onLinkPress={onLinkPress}
       allowedImageHandlers={allowedImageHandlers}
+      maxTopLevelChildren={MAX_MARKDOWN_TOP_LEVEL_CHILDREN}
       topLevelMaxExceededItem={topLevelMaxExceededItem}
     >
       {text}
