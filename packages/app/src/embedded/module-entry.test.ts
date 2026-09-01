@@ -12,6 +12,17 @@ describe("Complete Paseo embedded module entry", () => {
     expect(source).not.toMatch(/serverId|workspaceId|agentId|credential/);
   });
 
+  it("gates the mount harness to explicit builds or E2E paseoPath requests", async () => {
+    const [entry, globalSetup] = await Promise.all([
+      readSource("../../index.ts"),
+      readSource("../../e2e/support/global-setup.ts"),
+    ]);
+    expect(entry).toContain('process.env.EXPO_PUBLIC_COMPLETE_ROOT_MOUNT === "true"');
+    expect(entry).toContain('process.env.EXPO_PUBLIC_E2E === "true"');
+    expect(entry).toContain('new URLSearchParams(window.location.search).has("paseoPath")');
+    expect(globalSetup).toContain('EXPO_PUBLIC_E2E: "true"');
+  });
+
   it("installs the Expo Router no-linking patch after every clean install", async () => {
     const [postinstall, patch] = await Promise.all([
       readSource("../../../../scripts/postinstall-patches.mjs"),
