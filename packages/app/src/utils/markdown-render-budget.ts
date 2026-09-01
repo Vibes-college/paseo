@@ -21,7 +21,7 @@ export function constrainMarkdownForRender(text: string): {
 export function createSafeMarkdownParser(): MarkdownIt {
   return new MarkdownIt({
     html: false,
-    linkify: false,
+    linkify: true,
     typographer: false,
   });
 }

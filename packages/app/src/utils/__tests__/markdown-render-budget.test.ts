@@ -24,10 +24,10 @@ describe("Markdown render security budget", () => {
     expect(constrainMarkdownForRender(input)).toEqual({ text: input, truncated: false });
   });
 
-  it("disables vulnerable automatic linkification and smartquotes", () => {
+  it("preserves bounded automatic linkification without HTML or smartquotes", () => {
     const parser = createSafeMarkdownParser();
     expect(parser.options.html).toBe(false);
-    expect(parser.options.linkify).toBe(false);
+    expect(parser.options.linkify).toBe(true);
     expect(parser.options.typographer).toBe(false);
   });
 
