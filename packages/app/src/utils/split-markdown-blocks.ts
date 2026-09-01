@@ -1,17 +1,18 @@
-import MarkdownIt from "markdown-it";
+import { constrainMarkdownForRender, createSafeMarkdownParser } from "./markdown-render-budget";
 
-const markdownBlockParser = new MarkdownIt();
+const markdownBlockParser = createSafeMarkdownParser();
 
 export function splitMarkdownBlocks(text: string): string[] {
   if (text.length === 0) {
     return [];
   }
 
+  const renderText = constrainMarkdownForRender(text).text;
   const blocks: string[] = [];
   let currentLines: string[] = [];
   let sawBlockSeparator = false;
-  const lines = text.split("\n");
-  const structuralBlankLines = getStructuralBlankLines(text, lines);
+  const lines = renderText.split("\n");
+  const structuralBlankLines = getStructuralBlankLines(renderText, lines);
 
   for (const [index, line] of lines.entries()) {
     const isBlankLine = line.trim().length === 0;
