@@ -1,3 +1,16 @@
+diff --git a/node_modules/expo-camera/build/ExpoCamera.web.js b/node_modules/expo-camera/build/ExpoCamera.web.js
+index 415c5ae..aa6d3ee 100644
+--- a/node_modules/expo-camera/build/ExpoCamera.web.js
++++ b/node_modules/expo-camera/build/ExpoCamera.web.js
+@@ -23,7 +23,7 @@ const ExponentCamera = ({ facing, poster, ref, ...props }) => {
+     useWebQRScanner(video, {
+         interval: 300,
+         isEnabled: isQRScannerEnabled,
+-        captureOptions: { scale: 1, isImageMirror: native.type === 'front' },
++        captureOptions: { scale: 0.75, isImageMirror: native.type === 'front' },
+         onScanned(event) {
+             if (props.onBarcodeScanned) {
+                 props.onBarcodeScanned(event);
 diff --git a/node_modules/expo-camera/build/web/useWebQRScanner.js b/node_modules/expo-camera/build/web/useWebQRScanner.js
 index ae13c40..0adc338 100644
 --- a/node_modules/expo-camera/build/web/useWebQRScanner.js
@@ -86,6 +99,19 @@ index ae13c40..0adc338 100644
  export function useWebQRScanner(video, { isEnabled, captureOptions, interval, onScanned, onError, }) {
      const isRunning = React.useRef(false);
      const timeout = React.useRef(undefined);
+diff --git a/node_modules/expo-camera/src/ExpoCamera.web.tsx b/node_modules/expo-camera/src/ExpoCamera.web.tsx
+index ed6aadf..976cb69 100644
+--- a/node_modules/expo-camera/src/ExpoCamera.web.tsx
++++ b/node_modules/expo-camera/src/ExpoCamera.web.tsx
+@@ -55,7 +55,7 @@ const ExponentCamera = ({
+   useWebQRScanner(video, {
+     interval: 300,
+     isEnabled: isQRScannerEnabled,
+-    captureOptions: { scale: 1, isImageMirror: native.type === 'front' },
++    captureOptions: { scale: 0.75, isImageMirror: native.type === 'front' },
+     onScanned(event) {
+       if (props.onBarcodeScanned) {
+         props.onBarcodeScanned(event);
 diff --git a/node_modules/expo-camera/src/web/useWebQRScanner.ts b/node_modules/expo-camera/src/web/useWebQRScanner.ts
 index cf65a62..3881179 100644
 --- a/node_modules/expo-camera/src/web/useWebQRScanner.ts
