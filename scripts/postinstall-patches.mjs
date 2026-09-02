@@ -29,6 +29,10 @@ const patchedPackages = [
     patchPrefix: "@mattermost+react-native-paste-input+",
   },
   {
+    nodeModulesPath: "node_modules/expo-camera",
+    patchPrefix: "expo-camera+",
+  },
+  {
     nodeModulesPath: "node_modules/expo-router",
     patchPrefix: "expo-router+",
   },

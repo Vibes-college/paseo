@@ -1683,9 +1683,9 @@ export const fr: TranslationResources = {
     },
     scan: {
       title: "ScannerQR",
-      webUnavailableTitle: "Non disponible sur le Web",
+      webUnavailableTitle: "Caméra indisponible",
       webUnavailableBody:
-        "L'analyseQRn'est pas prise en charge dans la version Web. Utilisez plutôt \"Coller le lien\".",
+        "Le scan de codes QR dans le navigateur nécessite HTTPS et l’accès à la caméra. Utilisez plutôt « Coller le lien d’appairage ».",
       backToSettings: "Retour aux paramètres",
       cameraPermissionTitle: "Autorisation de la caméra",
       cameraPermissionBody:

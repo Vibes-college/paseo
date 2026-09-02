@@ -156,6 +156,25 @@ test.describe("Settings sidebar navigation", () => {
       await expect(page).toHaveURL(/\/settings(\/|$)/);
     });
   });
+
+  test("browser Web exposes QR scan behind an explicit camera permission action", async ({
+    page,
+  }) => {
+    await gotoAppShell(page);
+    await openSettings(page);
+    await openAddHostFlow(page);
+
+    await page.getByTestId("add-host-method-scan-qr").click();
+
+    await expect(page).toHaveURL(/\/pair-scan\?source=settings$/);
+    await expect(page.getByTestId("pair-scan-permission")).toBeVisible();
+    await expect(page.getByTestId("pair-scan-grant")).toBeVisible();
+    await expect(page.getByTestId("pair-scan-camera")).toHaveCount(0);
+
+    await page.getByTestId("pair-scan-grant").click();
+    await expect(page.getByTestId("pair-scan-error")).toBeVisible();
+    await expect(page.getByTestId("pair-scan-retry")).toBeEnabled();
+  });
 });
 
 test.describe("Settings — compact master-detail", () => {
@@ -276,6 +295,8 @@ test.describe("Settings — compact master-detail", () => {
     await closeCompactSettings(page);
 
     await expect(page).toHaveURL(/\/welcome$/);
+    await expect(page.getByTestId("welcome-scan-qr")).toBeVisible();
     await expect(page.getByTestId("welcome-direct-connection")).toBeVisible();
+    await expect(page.getByTestId("welcome-paste-pairing-link")).toBeVisible();
   });
 });

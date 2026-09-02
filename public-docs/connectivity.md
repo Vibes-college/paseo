@@ -35,7 +35,7 @@ Run:
 paseo daemon pair
 ```
 
-Confirm when prompted. Paseo prints a QR code and pairing link. Scan the QR code with Paseo on your phone, or choose **Paste pairing link** in the phone app.
+Confirm when prompted. Paseo prints a QR code and pairing link. Scan the QR code with the native app, or open **Add connection → Scan QR code** in Paseo Browser Web and grant camera access. You can always use **Paste pairing link** instead.
 
 ## Tailscale
 

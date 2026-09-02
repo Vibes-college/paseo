@@ -239,6 +239,7 @@ export async function openCompactSettingsHost(page: Page): Promise<void> {
 
 export async function expectAddHostMethodOptions(page: Page): Promise<void> {
   await expect(page.getByRole("button", { name: "Direct connection" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Scan QR code" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Paste pairing link" })).toBeVisible();
 }
 

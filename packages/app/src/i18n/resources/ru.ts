@@ -1662,9 +1662,9 @@ export const ru: TranslationResources = {
     },
     scan: {
       title: "Сканировать QR-код",
-      webUnavailableTitle: "Недоступно в веб-версии",
+      webUnavailableTitle: "Камера недоступна",
       webUnavailableBody:
-        "Сканирование QR-кодов не поддерживается в веб-сборке. Используйте «Вставить ссылку».",
+        "Для сканирования QR-кода в браузере требуются HTTPS и доступ к камере. Используйте «Вставить ссылку для сопряжения».",
       backToSettings: "Вернуться к настройкам",
       cameraPermissionTitle: "Разрешение камеры",
       cameraPermissionBody:

@@ -1616,8 +1616,8 @@ export const zhCN: TranslationResources = {
     },
     scan: {
       title: "扫描二维码",
-      webUnavailableTitle: "Web 上不可用",
-      webUnavailableBody: "Web build 不支持二维码扫描。请改用“粘贴链接”。",
+      webUnavailableTitle: "相机不可用",
+      webUnavailableBody: "浏览器二维码扫描需要 HTTPS 和相机权限。请改用“粘贴配对链接”。",
       backToSettings: "返回设置",
       cameraPermissionTitle: "相机权限",
       cameraPermissionBody: "允许相机访问，以扫描 daemon 提供的配对二维码。",

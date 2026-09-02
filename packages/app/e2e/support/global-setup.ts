@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import net from "node:net";
 import dotenv from "dotenv";
+import { writeQrCameraFixture } from "./qr-camera-fixture";
 
 export interface WaitForServerOptions {
   host?: string;
@@ -188,6 +189,7 @@ export default async function globalSetup() {
   }
   const repoRoot = path.resolve(__dirname, "../../../..");
   await loadHarnessEnvironment(repoRoot);
+  await writeQrCameraFixture();
 
   const metroPort = await getAvailableE2EPort();
   const metroOutput = createLineBuffer();

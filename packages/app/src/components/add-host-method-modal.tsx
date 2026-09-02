@@ -5,7 +5,8 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { QrCode, Link2, ClipboardPaste } from "lucide-react-native";
 import { AdaptiveModalSheet, type SheetHeader } from "./adaptive-modal-sheet";
 import { isFdroidBuild } from "@/constants/build-profile";
-import { isNative } from "@/constants/platform";
+import { getIsElectron, isNative } from "@/constants/platform";
+import { shouldOfferPairingQrScan } from "@/utils/pairing-scan-platform";
 
 const styles = StyleSheet.create((theme) => ({
   option: {
@@ -51,6 +52,11 @@ export function AddHostMethodModal({
   const { theme } = useUnistyles();
   const { t } = useTranslation();
   const header = useMemo<SheetHeader>(() => ({ title: t("pairing.connectionMethods.title") }), [t]);
+  const showQrScan = shouldOfferPairingQrScan({
+    isNative,
+    isFdroidBuild,
+    isElectron: getIsElectron(),
+  });
 
   const handleDirect = useCallback(() => {
     onDirectConnection();
@@ -87,12 +93,13 @@ export function AddHostMethodModal({
         </View>
       </Pressable>
 
-      {isNative && !isFdroidBuild ? (
+      {showQrScan ? (
         <Pressable
           style={styles.option}
           onPress={handleScan}
           accessibilityRole="button"
           accessibilityLabel={t("pairing.connectionMethods.scanQr.title")}
+          testID="add-host-method-scan-qr"
         >
           <QrCode size={18} color={theme.colors.foreground} />
           <View style={styles.optionBody}>
