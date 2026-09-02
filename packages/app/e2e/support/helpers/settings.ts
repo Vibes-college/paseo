@@ -237,9 +237,16 @@ export async function openCompactSettingsHost(page: Page): Promise<void> {
   await expectHostSettingsUrl(page, serverId);
 }
 
-export async function expectAddHostMethodOptions(page: Page): Promise<void> {
+export async function expectAddHostMethodOptions(
+  page: Page,
+  input: { scanQr: "visible" | "hidden" },
+): Promise<void> {
   await expect(page.getByRole("button", { name: "Direct connection" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Scan QR code" })).toBeVisible();
+  if (input.scanQr === "visible") {
+    await expect(page.getByRole("button", { name: "Scan QR code" })).toBeVisible();
+  } else {
+    await expect(page.getByRole("button", { name: "Scan QR code" })).toHaveCount(0);
+  }
   await expect(page.getByRole("button", { name: "Paste pairing link" })).toBeVisible();
 }
 

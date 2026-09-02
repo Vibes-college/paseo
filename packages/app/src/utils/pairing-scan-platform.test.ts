@@ -4,23 +4,53 @@ import { canUsePairingQrCamera, shouldOfferPairingQrScan } from "./pairing-scan-
 describe("pairing QR scan platform policy", () => {
   it.each([
     {
-      label: "ordinary browser web",
-      input: { isNative: false, isFdroidBuild: false, isElectron: false },
+      label: "compact browser web",
+      input: {
+        isNative: false,
+        isFdroidBuild: false,
+        isElectron: false,
+        isCompactFormFactor: true,
+      },
       expected: true,
     },
     {
+      label: "desktop browser web",
+      input: {
+        isNative: false,
+        isFdroidBuild: false,
+        isElectron: false,
+        isCompactFormFactor: false,
+      },
+      expected: false,
+    },
+    {
       label: "native App Store build",
-      input: { isNative: true, isFdroidBuild: false, isElectron: false },
+      input: {
+        isNative: true,
+        isFdroidBuild: false,
+        isElectron: false,
+        isCompactFormFactor: false,
+      },
       expected: true,
     },
     {
       label: "native F-Droid build",
-      input: { isNative: true, isFdroidBuild: true, isElectron: false },
+      input: {
+        isNative: true,
+        isFdroidBuild: true,
+        isElectron: false,
+        isCompactFormFactor: true,
+      },
       expected: false,
     },
     {
       label: "Electron desktop",
-      input: { isNative: false, isFdroidBuild: false, isElectron: true },
+      input: {
+        isNative: true,
+        isFdroidBuild: false,
+        isElectron: true,
+        isCompactFormFactor: true,
+      },
       expected: false,
     },
   ])("returns $expected for $label", ({ input, expected }) => {

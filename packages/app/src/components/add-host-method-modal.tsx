@@ -5,6 +5,7 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { QrCode, Link2, ClipboardPaste } from "lucide-react-native";
 import { AdaptiveModalSheet, type SheetHeader } from "./adaptive-modal-sheet";
 import { isFdroidBuild } from "@/constants/build-profile";
+import { useIsCompactFormFactor } from "@/constants/layout";
 import { getIsElectron, isNative } from "@/constants/platform";
 import { shouldOfferPairingQrScan } from "@/utils/pairing-scan-platform";
 
@@ -51,11 +52,13 @@ export function AddHostMethodModal({
 }: AddHostMethodModalProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const isCompactFormFactor = useIsCompactFormFactor();
   const header = useMemo<SheetHeader>(() => ({ title: t("pairing.connectionMethods.title") }), [t]);
   const showQrScan = shouldOfferPairingQrScan({
     isNative,
     isFdroidBuild,
     isElectron: getIsElectron(),
+    isCompactFormFactor,
   });
 
   const handleDirect = useCallback(() => {
