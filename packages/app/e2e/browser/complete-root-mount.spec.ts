@@ -1,5 +1,15 @@
 import { expect, test } from "../support/fixtures";
 import { buildAgentRoute, seedMockAgentWorkspace } from "../support/helpers/mock-agent";
+import type { Page } from "@playwright/test";
+
+function readVisualViewport(page: Page) {
+  return page.evaluate(() => ({
+    left: window.visualViewport?.offsetLeft ?? 0,
+    top: window.visualViewport?.offsetTop ?? 0,
+    width: window.visualViewport?.width ?? window.innerWidth,
+    height: window.visualViewport?.height ?? window.innerHeight,
+  }));
+}
 
 test.describe.configure({ timeout: 180_000 });
 
@@ -181,7 +191,7 @@ test("mounts the Complete Root with isolated routing, owned overlays, and clean 
 });
 
 test.describe("mobile embedded Compact", () => {
-  test.use({ viewport: { width: 390, height: 812 } });
+  test.use({ hasTouch: true, viewport: { width: 390, height: 812 } });
 
   test("keeps only the agent timeline and Composer while retaining one Root", async ({ page }) => {
     const agent = await seedMockAgentWorkspace({
@@ -200,6 +210,12 @@ test.describe("mobile embedded Compact", () => {
       const compactSurface = page.locator('[data-paseo-host-surface][data-surface="compact"]');
       await expect(compactSurface).toBeVisible();
       await expect(page.getByText("Show the Mobile Compact timeline fixture.")).toBeVisible();
+      await expect(compactSurface).toHaveAttribute("data-compact-form-factor", "mobile");
+      await expect(page.locator('button[aria-label="New tab"]:visible')).toHaveCount(0);
+      await expect(page.locator('button[aria-label^="Runtime menu"]:visible')).toHaveCount(0);
+      await expect(page.locator("[data-paseo-resize-handle]:visible")).toHaveCount(0);
+      await expect(page.locator('button[aria-label="Close Compact"]:visible')).toHaveCount(1);
+      await expect(page.locator('button[aria-label="Minimize"]:visible')).toHaveCount(0);
       await expect(page.locator('button[aria-label="Close menu"]:visible')).toHaveCount(0);
       await expect(page.locator('button[aria-label="Open menu"]:visible')).toHaveCount(0);
       await expect(page.locator('button[aria-label="Open Explorer sidebar"]:visible')).toHaveCount(
@@ -209,6 +225,71 @@ test.describe("mobile embedded Compact", () => {
       await expect(page.getByTestId("sidebar-settings")).toHaveCount(0);
       await expect(page.getByTestId("sidebar-project-list")).toHaveCount(0);
       await expect(page.locator("[data-paseo-app-root]")).toHaveCount(1);
+
+      const expectCenteredInVisualViewport = async () => {
+        await expect
+          .poll(async () => {
+            const [surfaceRect, visualViewport] = await Promise.all([
+              compactSurface.boundingBox(),
+              readVisualViewport(page),
+            ]);
+            if (!surfaceRect) return { horizontallyCentered: false, verticallyCentered: false };
+            return {
+              horizontallyCentered:
+                Math.abs(
+                  surfaceRect.x +
+                    surfaceRect.width / 2 -
+                    (visualViewport.left + visualViewport.width / 2),
+                ) < 0.5,
+              verticallyCentered:
+                Math.abs(
+                  surfaceRect.y +
+                    surfaceRect.height / 2 -
+                    (visualViewport.top + visualViewport.height / 2),
+                ) < 0.5,
+            };
+          })
+          .toEqual({ horizontallyCentered: true, verticallyCentered: true });
+        const [surfaceRect, visualViewport] = await Promise.all([
+          compactSurface.boundingBox(),
+          readVisualViewport(page),
+        ]);
+        expect(surfaceRect).not.toBeNull();
+        expect(surfaceRect!.x).toBeGreaterThanOrEqual(0);
+        expect(surfaceRect!.y).toBeGreaterThanOrEqual(0);
+        expect(surfaceRect!.x + surfaceRect!.width).toBeLessThanOrEqual(
+          visualViewport.left + visualViewport.width,
+        );
+        expect(surfaceRect!.y + surfaceRect!.height).toBeLessThanOrEqual(
+          visualViewport.top + visualViewport.height,
+        );
+        return surfaceRect!;
+      };
+      const initialRect = await expectCenteredInVisualViewport();
+
+      const headerRect = await page.locator("[data-paseo-compact-header]").boundingBox();
+      expect(headerRect).not.toBeNull();
+      await page.mouse.move(headerRect!.x + headerRect!.width / 2, headerRect!.y + 8);
+      await page.mouse.down();
+      await page.mouse.move(headerRect!.x + 48, headerRect!.y + 96, { steps: 4 });
+      await page.mouse.up();
+      expect(await compactSurface.boundingBox()).toEqual(initialRect);
+
+      const cdp = await page.context().newCDPSession(page);
+      const touchStart = { x: headerRect!.x + 16, y: headerRect!.y + 16 };
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ ...touchStart, radiusX: 2, radiusY: 2, force: 1 }],
+      });
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [
+          { x: touchStart.x + 64, y: touchStart.y + 96, radiusX: 2, radiusY: 2, force: 1 },
+        ],
+      });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await cdp.detach();
+      expect(await compactSurface.boundingBox()).toEqual(initialRect);
 
       const identityBeforeFull = await page.evaluate(() => ({
         rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,
@@ -235,6 +316,31 @@ test.describe("mobile embedded Compact", () => {
           element.selectionEnd,
         ]),
       ).toEqual([7, 14]);
+      expect(
+        await page.evaluate(() => ({
+          rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,
+          activeConnectionCount:
+            window.__paseoCompleteRootV1!.diagnostics()!.owner!.runtime.activeConnectionCount,
+        })),
+      ).toEqual(identityBeforeFull);
+
+      await page.setViewportSize({ width: 375, height: 560 });
+      await expectCenteredInVisualViewport();
+      await expect(page.getByRole("textbox", { name: "Message agent..." }).first()).toBeVisible();
+
+      await page.setViewportSize({ width: 812, height: 390 });
+      await expect(compactSurface).toHaveAttribute("data-compact-form-factor", "mobile");
+      await expectCenteredInVisualViewport();
+      await expect(page.getByRole("textbox", { name: "Message agent..." }).first()).toBeVisible();
+
+      await page.locator('button[aria-label="Close Compact"]:visible').click();
+      await expect(compactSurface).not.toBeVisible();
+      const fab = page.locator("[data-paseo-fab]:visible");
+      await expect(fab).toBeVisible();
+      await expect(fab).toBeFocused();
+      await fab.click();
+      await expect(compactSurface).toBeVisible();
+      await expect(compactSurface).toHaveAttribute("data-compact-form-factor", "mobile");
       expect(
         await page.evaluate(() => ({
           rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,

@@ -4,7 +4,9 @@ import {
   COMPACT_DEFAULT_WIDTH,
   COMPACT_MIN_HEIGHT,
   COMPACT_MIN_WIDTH,
+  resolveCompactHostFormFactor,
   resolveCompactSize,
+  resolveMobileCompactLayout,
   resizeCompactWindow,
 } from "./compact-shell-layout";
 
@@ -53,6 +55,35 @@ describe("Compact host shell layout", () => {
     expect(resizeCompactWindow({ ...input, direction: "corner" })).toMatchObject({
       width: 440,
       height: 640,
+    });
+  });
+
+  it("keeps coarse-pointer phones mobile through rotation without treating desktop as mobile", () => {
+    expect(resolveCompactHostFormFactor({ viewportWidth: 390, hasCoarsePointer: false })).toBe(
+      "mobile",
+    );
+    expect(resolveCompactHostFormFactor({ viewportWidth: 812, hasCoarsePointer: true })).toBe(
+      "mobile",
+    );
+    expect(resolveCompactHostFormFactor({ viewportWidth: 812, hasCoarsePointer: false })).toBe(
+      "desktop",
+    );
+  });
+
+  it("centers Mobile Compact inside the safe visual viewport", () => {
+    expect(
+      resolveMobileCompactLayout({
+        requested: { width: 380, height: 600 },
+        viewport: { offsetLeft: 3, offsetTop: 100, width: 390, height: 400 },
+        safeArea: { top: 47, right: 0, bottom: 34, left: 0 },
+      }),
+    ).toEqual({
+      x: 30,
+      y: 170.5,
+      width: 336,
+      height: 272,
+      maxWidth: 336,
+      maxHeight: 272,
     });
   });
 });

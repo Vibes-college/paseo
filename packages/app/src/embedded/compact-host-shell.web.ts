@@ -3,10 +3,15 @@ import { constrainPaseoFabPosition, snapPaseoFabPosition, type Point } from "./f
 import {
   COMPACT_DEFAULT_HEIGHT,
   COMPACT_DEFAULT_WIDTH,
+  resolveCompactHostFormFactor,
   resolveCompactSize,
+  resolveMobileCompactLayout,
   resizeCompactWindow,
+  type CompactHostFormFactor,
   type CompactResizeDirection,
+  type CompactSafeAreaInsets,
   type CompactSize,
+  type CompactVisualViewport,
 } from "./compact-shell-layout";
 
 export interface PaseoCompactShellSlots {
@@ -26,6 +31,7 @@ export interface PaseoHostShellDiagnostics {
   fabVisible: boolean;
   fabFocused: boolean;
   fabRect: { x: number; y: number; width: number; height: number } | null;
+  compactFormFactor: CompactHostFormFactor;
 }
 
 export interface PaseoHostShell {
@@ -53,6 +59,8 @@ const HOST_STYLE = `
 .vibes-paseo-fab[data-state="running"]{animation:vibes-paseo-fab-pulse 1.8s ease-in-out infinite}@keyframes vibes-paseo-fab-pulse{0%,100%{transform:scale(1)}50%{transform:scale(.92)}}
 .vibes-paseo-resize-handle{position:absolute;z-index:40}.vibes-paseo-resize-handle[data-direction="left"]{top:16px;bottom:0;left:0;width:4px;cursor:col-resize}.vibes-paseo-resize-handle[data-direction="top"]{top:0;right:0;left:16px;height:4px;cursor:row-resize}.vibes-paseo-resize-handle[data-direction="corner"]{top:0;left:0;width:16px;height:16px;cursor:nw-resize}
 .vibes-paseo-surface[data-surface="full"]>.vibes-paseo-resize-handle{display:none}
+.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-compact-header{justify-content:flex-end}
+.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-compact-header>.vibes-paseo-shell-slot,.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-resize-handle{display:none}
 `;
 
 export function createPaseoHostShell(input: {
@@ -66,6 +74,19 @@ export function createPaseoHostShell(input: {
   styleElement.dataset.paseoCompactShellStyle = "true";
   styleElement.textContent = HOST_STYLE;
   document.head.appendChild(styleElement);
+
+  const safeAreaProbe = document.createElement("div");
+  safeAreaProbe.dataset.paseoSafeAreaProbe = "true";
+  Object.assign(safeAreaProbe.style, {
+    position: "fixed",
+    visibility: "hidden",
+    pointerEvents: "none",
+    paddingTop: "env(safe-area-inset-top, 0px)",
+    paddingRight: "env(safe-area-inset-right, 0px)",
+    paddingBottom: "env(safe-area-inset-bottom, 0px)",
+    paddingLeft: "env(safe-area-inset-left, 0px)",
+  });
+  document.body.appendChild(safeAreaProbe);
 
   const container = document.createElement("section");
   container.className = "vibes-paseo-surface";
@@ -107,7 +128,12 @@ export function createPaseoHostShell(input: {
   input.root.replaceChildren(container, fab);
 
   let surface = input.initialSurface;
-  let size: CompactSize = { width: COMPACT_DEFAULT_WIDTH, height: COMPACT_DEFAULT_HEIGHT };
+  let requestedSize: CompactSize = {
+    width: COMPACT_DEFAULT_WIDTH,
+    height: COMPACT_DEFAULT_HEIGHT,
+  };
+  let resolvedSize: CompactSize = { ...requestedSize };
+  let compactFormFactor: CompactHostFormFactor = "desktop";
   let minimized = false;
   let hostVisible = true;
   let dragging = false;
@@ -122,10 +148,27 @@ export function createPaseoHostShell(input: {
   let suppressFabClick = false;
   let disposed = false;
 
-  const viewport = () => ({
+  const visualViewport = (): CompactVisualViewport => ({
+    offsetLeft: window.visualViewport?.offsetLeft ?? 0,
+    offsetTop: window.visualViewport?.offsetTop ?? 0,
     width: window.visualViewport?.width ?? document.documentElement.clientWidth,
     height: window.visualViewport?.height ?? document.documentElement.clientHeight,
   });
+  const viewport = () => {
+    const current = visualViewport();
+    return { width: current.width, height: current.height };
+  };
+  const coarsePointerQuery = window.matchMedia?.("(hover: none) and (pointer: coarse)") ?? null;
+  const readSafeArea = (): CompactSafeAreaInsets => {
+    const style = getComputedStyle(safeAreaProbe);
+    const read = (value: string) => Number.parseFloat(value) || 0;
+    return {
+      top: read(style.paddingTop),
+      right: read(style.paddingRight),
+      bottom: read(style.paddingBottom),
+      left: read(style.paddingLeft),
+    };
+  };
   const fabSize = () => {
     const rect = fab.getBoundingClientRect();
     return { width: rect.width || 40, height: rect.height || 40 };
@@ -161,10 +204,40 @@ export function createPaseoHostShell(input: {
     if (fabVisible) applyFabPosition();
   };
   const applySize = () => {
-    const resolved = resolveCompactSize(size, viewport());
-    size = { width: resolved.width, height: resolved.height };
+    const currentViewport = visualViewport();
+    compactFormFactor = resolveCompactHostFormFactor({
+      viewportWidth: currentViewport.width,
+      hasCoarsePointer: coarsePointerQuery?.matches ?? false,
+    });
+    container.dataset.compactFormFactor = compactFormFactor;
+    const compactActionLabel = compactFormFactor === "mobile" ? "Close Compact" : "Minimize";
+    minimizeButton.setAttribute("aria-label", compactActionLabel);
+    minimizeButton.title = compactActionLabel;
+    minimizeButton.innerHTML = compactFormFactor === "mobile" ? CLOSE_ICON : MINIMIZE_ICON;
+    const resolved =
+      compactFormFactor === "mobile"
+        ? resolveMobileCompactLayout({
+            requested: requestedSize,
+            viewport: currentViewport,
+            safeArea: readSafeArea(),
+          })
+        : resolveCompactSize(requestedSize, currentViewport);
+    resolvedSize = { width: resolved.width, height: resolved.height };
     container.style.width = `${resolved.width}px`;
     container.style.height = `${resolved.height}px`;
+    if ("x" in resolved && "y" in resolved) {
+      container.style.left = `${resolved.x}px`;
+      container.style.top = `${resolved.y}px`;
+      container.style.right = "auto";
+      container.style.bottom = "auto";
+      container.style.margin = "0";
+    } else {
+      container.style.removeProperty("left");
+      container.style.removeProperty("top");
+      container.style.removeProperty("right");
+      container.style.removeProperty("bottom");
+      container.style.removeProperty("margin");
+    }
     container.dataset.paseoCompactWidth = String(resolved.width);
     container.dataset.paseoCompactHeight = String(resolved.height);
   };
@@ -179,17 +252,22 @@ export function createPaseoHostShell(input: {
       container.setAttribute("aria-modal", "true");
       container.style.removeProperty("width");
       container.style.removeProperty("height");
+      container.style.removeProperty("left");
+      container.style.removeProperty("top");
+      container.style.removeProperty("right");
+      container.style.removeProperty("bottom");
+      container.style.removeProperty("margin");
     }
   };
 
   const startResize = (event: PointerEvent, direction: CompactResizeDirection) => {
-    if (surface !== "compact") return;
+    if (surface !== "compact" || compactFormFactor === "mobile") return;
     event.preventDefault();
     disposeDrag?.();
     const target = event.currentTarget as HTMLElement;
     target.setPointerCapture?.(event.pointerId);
     const pointerStart = { x: event.clientX, y: event.clientY };
-    const start = { ...size };
+    const start = { ...resolvedSize };
     dragging = true;
     container.dataset.paseoResizeDragging = direction;
     document.body.style.cursor = {
@@ -207,7 +285,7 @@ export function createPaseoHostShell(input: {
         pointerCurrent: { x: moveEvent.clientX, y: moveEvent.clientY },
         viewport: viewport(),
       });
-      size = { width: resolved.width, height: resolved.height };
+      requestedSize = { width: resolved.width, height: resolved.height };
       applySize();
     };
     const finish = () => {
@@ -316,6 +394,9 @@ export function createPaseoHostShell(input: {
   };
   window.addEventListener("resize", handleViewportResize);
   window.visualViewport?.addEventListener("resize", handleViewportResize);
+  window.visualViewport?.addEventListener("scroll", handleViewportResize);
+  window.addEventListener("orientationchange", handleViewportResize);
+  coarsePointerQuery?.addEventListener("change", handleViewportResize);
   applySurface();
   applyVisibility();
 
@@ -390,6 +471,7 @@ export function createPaseoHostShell(input: {
               height: Math.round(fabRect.height),
             }
           : null,
+        compactFormFactor,
       };
     },
     dispose() {
@@ -398,7 +480,11 @@ export function createPaseoHostShell(input: {
       disposeDrag?.();
       window.removeEventListener("resize", handleViewportResize);
       window.visualViewport?.removeEventListener("resize", handleViewportResize);
+      window.visualViewport?.removeEventListener("scroll", handleViewportResize);
+      window.removeEventListener("orientationchange", handleViewportResize);
+      coarsePointerQuery?.removeEventListener("change", handleViewportResize);
       styleElement.remove();
+      safeAreaProbe.remove();
       container.remove();
       fab.remove();
     },
@@ -427,5 +513,7 @@ const FULL_ICON =
   '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
 const MINIMIZE_ICON =
   '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"/></svg>';
+const CLOSE_ICON =
+  '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m6 6 12 12"/><path d="m18 6-12 12"/></svg>';
 const FAB_ICON =
   '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>';
