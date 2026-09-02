@@ -33,6 +33,23 @@ describe("Complete Paseo embedded module entry", () => {
     expect(patch).toContain("enabled: false");
   });
 
+  it("installs a local Web QR decoder without runtime CDN scripts", async () => {
+    const [postinstall, patch, packageJson] = await Promise.all([
+      readSource("../../../../scripts/postinstall-patches.mjs"),
+      readSource("../../../../patches/expo-camera+17.0.10.patch"),
+      readSource("../../package.json"),
+    ]);
+    expect(postinstall).toContain('nodeModulesPath: "node_modules/expo-camera"');
+    const patchAdditions = patch
+      .split("\n")
+      .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+      .join("\n");
+    expect(postinstall).toContain('patchPrefix: "expo-camera+"');
+    expect(packageJson).toContain('"jsqr": "1.4.0"');
+    expect(patchAdditions).toContain("import jsQR from 'jsqr'");
+    expect(patchAdditions).not.toMatch(/cdn\.jsdelivr\.net|importScripts\s*\(/);
+  });
+
   it("builds Production modules at the admitted VIBES asset path", async () => {
     const [config, packageJson] = await Promise.all([
       readSource("../../app.config.js"),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
@@ -11,8 +11,9 @@ import { decodeOfferFragmentPayload, normalizeHostPort } from "@/utils/daemon-en
 import { connectToDaemon } from "@/utils/test-daemon-connection";
 import { ConnectionOfferSchema } from "@getpaseo/protocol/connection-offer";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
-import { isWeb } from "@/constants/platform";
+import { getIsElectron, isWeb } from "@/constants/platform";
 import { BackHeader } from "@/components/headers/back-header";
+import { canUsePairingQrCamera } from "@/utils/pairing-scan-platform";
 
 const styles = StyleSheet.create((theme) => ({
   container: {
@@ -97,6 +98,11 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.base,
   },
+  permissionActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing[3],
+  },
   permissionButton: {
     alignSelf: "flex-start",
     paddingHorizontal: theme.spacing[6],
@@ -104,9 +110,15 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.borderRadius.lg,
     backgroundColor: theme.colors.palette.blue[500],
   },
+  secondaryButton: {
+    backgroundColor: theme.colors.surface3,
+  },
   permissionButtonText: {
     color: theme.colors.palette.white,
     fontWeight: theme.fontWeight.semibold,
+  },
+  secondaryButtonText: {
+    color: theme.colors.foreground,
   },
 }));
 
@@ -132,7 +144,19 @@ export default function PairScanScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isPairing, setIsPairing] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [isScanPaused, setIsScanPaused] = useState(false);
   const lastScannedRef = useRef<string | null>(null);
+  const cameraAvailable =
+    !getIsElectron() &&
+    canUsePairingQrCamera({
+      isWeb,
+      isSecureContext: !isWeb || (typeof window !== "undefined" && window.isSecureContext),
+      hasGetUserMedia:
+        !isWeb ||
+        (typeof navigator !== "undefined" &&
+          typeof navigator.mediaDevices?.getUserMedia === "function"),
+    });
 
   const navigateToPairedHost = useCallback(
     (serverId: string) => {
@@ -161,12 +185,14 @@ export default function PairScanScreen() {
 
   const handleScan = useCallback(
     async (result: BarcodeScanningResult) => {
-      if (isPairing) return;
+      if (isPairing || isScanPaused) return;
       const offerUrl = extractOfferUrlFromScan(result);
       if (!offerUrl) return;
 
       if (lastScannedRef.current === offerUrl) return;
       lastScannedRef.current = offerUrl;
+      setScanError(null);
+      setIsScanPaused(true);
 
       try {
         setIsPairing(true);
@@ -188,23 +214,49 @@ export default function PairScanScreen() {
         await client.close().catch(() => undefined);
 
         const profile = await upsertDaemonFromOfferUrl(offerUrl, hostname ?? undefined);
-
         navigateToPairedHost(profile.serverId);
       } catch (error) {
-        lastScannedRef.current = null;
         const message = error instanceof Error ? error.message : t("pairing.scan.unableToPair");
-        Alert.alert(t("pairing.scan.errorTitle"), message);
+        if (isWeb) {
+          setScanError(message);
+        } else {
+          lastScannedRef.current = null;
+          setIsScanPaused(false);
+          Alert.alert(t("pairing.scan.errorTitle"), message);
+        }
       } finally {
         setIsPairing(false);
       }
     },
-    [isPairing, navigateToPairedHost, t, upsertDaemonFromOfferUrl],
+    [isPairing, isScanPaused, navigateToPairedHost, t, upsertDaemonFromOfferUrl],
   );
 
   const handleRouterBack = useCallback(() => router.back(), [router]);
   const handleRequestPermission = useCallback(() => {
-    void requestPermission();
-  }, [requestPermission]);
+    setScanError(null);
+    void requestPermission()
+      .then((nextPermission) => {
+        if (!nextPermission.granted) {
+          setScanError(t("pairing.scan.webUnavailableBody"));
+        }
+        return nextPermission;
+      })
+      .catch((error) => {
+        setScanError(error instanceof Error ? error.message : t("pairing.scan.webUnavailableBody"));
+      });
+  }, [requestPermission, t]);
+  const handleCameraMountError = useCallback(
+    ({ message }: { message: string }) => {
+      setIsScanPaused(true);
+      setScanError(message || t("pairing.scan.webUnavailableBody"));
+    },
+    [t],
+  );
+  const handleRetry = useCallback(() => {
+    lastScannedRef.current = null;
+    setScanError(null);
+    setIsScanPaused(false);
+  }, []);
 
   const bodyStyle = useMemo(
     () => [styles.body, { paddingBottom: insets.bottom + theme.spacing[6] }],
@@ -215,15 +267,24 @@ export default function PairScanScreen() {
     [theme.colors.foreground],
   );
 
-  if (isWeb) {
+  if (!cameraAvailable) {
     return (
       <View style={styles.container}>
         <BackHeader title={t("pairing.scan.title")} onBack={handleRouterBack} />
         <View style={bodyStyle}>
-          <View style={styles.permissionCard}>
+          <View
+            style={styles.permissionCard}
+            accessibilityRole="alert"
+            testID="pair-scan-unavailable"
+          >
             <Text style={styles.permissionTitle}>{t("pairing.scan.webUnavailableTitle")}</Text>
             <Text style={styles.permissionBody}>{t("pairing.scan.webUnavailableBody")}</Text>
-            <Pressable style={styles.permissionButton} onPress={closeToSource}>
+            <Pressable
+              style={styles.permissionButton}
+              onPress={closeToSource}
+              accessibilityRole="button"
+              testID="pair-scan-back"
+            >
               <Text style={styles.permissionButtonText}>{t("pairing.scan.backToSettings")}</Text>
             </Pressable>
           </View>
@@ -233,40 +294,76 @@ export default function PairScanScreen() {
   }
 
   const granted = Boolean(permission?.granted);
+  let scannerContent: ReactNode;
+  if (scanError) {
+    scannerContent = (
+      <View style={styles.permissionCard} accessibilityRole="alert" testID="pair-scan-error">
+        <Text style={styles.permissionTitle}>{t("pairing.scan.errorTitle")}</Text>
+        <Text style={styles.permissionBody}>{scanError}</Text>
+        <View style={styles.permissionActions}>
+          <Pressable
+            style={styles.permissionButton}
+            onPress={handleRetry}
+            accessibilityRole="button"
+            testID="pair-scan-retry"
+          >
+            <Text style={styles.permissionButtonText}>{t("pairing.device.retry")}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.permissionButton, styles.secondaryButton]}
+            onPress={closeToSource}
+            accessibilityRole="button"
+            testID="pair-scan-back"
+          >
+            <Text style={[styles.permissionButtonText, styles.secondaryButtonText]}>
+              {t("pairing.scan.backToSettings")}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  } else if (!granted) {
+    scannerContent = (
+      <View style={styles.permissionCard} testID="pair-scan-permission">
+        <Text style={styles.permissionTitle}>{t("pairing.scan.cameraPermissionTitle")}</Text>
+        <Text style={styles.permissionBody}>{t("pairing.scan.cameraPermissionBody")}</Text>
+        <Pressable
+          style={styles.permissionButton}
+          onPress={handleRequestPermission}
+          accessibilityRole="button"
+          testID="pair-scan-grant"
+        >
+          <Text style={styles.permissionButtonText}>{t("pairing.scan.grantPermission")}</Text>
+        </Pressable>
+      </View>
+    );
+  } else {
+    scannerContent = (
+      <View style={styles.cameraWrap} testID="pair-scan-camera">
+        <CameraView
+          style={styles.camera}
+          facing="back"
+          barcodeScannerSettings={BARCODE_SCANNER_SETTINGS}
+          onBarcodeScanned={isScanPaused ? undefined : handleScan}
+          onMountError={handleCameraMountError}
+        />
+        <View style={styles.overlay} pointerEvents="none">
+          <View style={styles.scanFrame}>
+            <View style={[styles.corner, styles.cornerTL]} />
+            <View style={[styles.corner, styles.cornerTR]} />
+            <View style={[styles.corner, styles.cornerBL]} />
+            <View style={[styles.corner, styles.cornerBR]} />
+          </View>
+          {isPairing ? <Text style={helperTextStyle}>{t("pairing.scan.pairing")}</Text> : null}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <BackHeader title={t("pairing.scan.title")} onBack={closeToSource} />
-
-      <View style={bodyStyle}>
-        {!granted ? (
-          <View style={styles.permissionCard}>
-            <Text style={styles.permissionTitle}>{t("pairing.scan.cameraPermissionTitle")}</Text>
-            <Text style={styles.permissionBody}>{t("pairing.scan.cameraPermissionBody")}</Text>
-            <Pressable style={styles.permissionButton} onPress={handleRequestPermission}>
-              <Text style={styles.permissionButtonText}>{t("pairing.scan.grantPermission")}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.cameraWrap}>
-            <CameraView
-              style={styles.camera}
-              facing="back"
-              barcodeScannerSettings={BARCODE_SCANNER_SETTINGS}
-              onBarcodeScanned={handleScan}
-            />
-            <View style={styles.overlay} pointerEvents="none">
-              <View style={styles.scanFrame}>
-                <View style={[styles.corner, styles.cornerTL]} />
-                <View style={[styles.corner, styles.cornerTR]} />
-                <View style={[styles.corner, styles.cornerBL]} />
-                <View style={[styles.corner, styles.cornerBR]} />
-              </View>
-              {isPairing ? <Text style={helperTextStyle}>{t("pairing.scan.pairing")}</Text> : null}
-            </View>
-          </View>
-        )}
-      </View>
+      <View style={bodyStyle}>{scannerContent}</View>
     </View>
   );
 }

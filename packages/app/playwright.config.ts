@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { QR_CAMERA_VIDEO_PATH } from "./e2e/support/qr-camera-fixture";
 
 // E2E_METRO_PORT is set dynamically by global-setup.ts after finding a free port
 // This allows multiple test runs in parallel across different worktrees
@@ -34,8 +35,23 @@ export default defineConfig({
   projects: [
     {
       name: "browser",
-      testIgnore: ["**/*.real.spec.ts"],
+      testIgnore: ["**/*.real.spec.ts", "**/pair-scan-camera.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "qr-camera",
+      testMatch: ["**/pair-scan-camera.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        permissions: ["camera"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+            `--use-file-for-fake-video-capture=${QR_CAMERA_VIDEO_PATH}`,
+          ],
+        },
+      },
     },
     {
       name: "real-provider",

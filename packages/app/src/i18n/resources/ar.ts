@@ -1635,8 +1635,9 @@ export const ar: TranslationResources = {
     },
     scan: {
       title: "مسح QR",
-      webUnavailableTitle: "غير متوفر على شبكة الإنترنت",
-      webUnavailableBody: 'فحص QR غير مدعوم في بناء الويب. استخدم "لصق الرابط" بدلاً من ذلك.',
+      webUnavailableTitle: "الكاميرا غير متاحة",
+      webUnavailableBody:
+        'يتطلب مسح رمز QR في المتصفح اتصال HTTPS وإذن الوصول إلى الكاميرا. استخدم "لصق رابط الاقتران" بدلاً من ذلك.',
       backToSettings: "العودة إلى الإعدادات",
       cameraPermissionTitle: "إذن الكاميرا",
       cameraPermissionBody: "اسمح بالوصول إلى الكاميرا لمسح رمز الاقتران QR من البرنامج الخفي لديك.",

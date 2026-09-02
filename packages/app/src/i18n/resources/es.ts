@@ -1679,9 +1679,9 @@ export const es: TranslationResources = {
     },
     scan: {
       title: "EscanearQR",
-      webUnavailableTitle: "No disponible en la web",
+      webUnavailableTitle: "Cámara no disponible",
       webUnavailableBody:
-        'El escaneoQRno es compatible con la compilación web. Utilice "Pegar enlace" en su lugar.',
+        'El escaneo de códigos QR en el navegador requiere HTTPS y acceso a la cámara. Usa "Pegar enlace de emparejamiento" en su lugar.',
       backToSettings: "Volver a configuración",
       cameraPermissionTitle: "Permiso de cámara",
       cameraPermissionBody:
