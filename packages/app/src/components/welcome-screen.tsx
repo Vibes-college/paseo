@@ -16,6 +16,7 @@ import { buildOpenProjectRoute } from "@/utils/host-routes";
 import { PaseoLogo } from "@/components/icons/paseo-logo";
 import { openExternalUrl } from "@/utils/open-external-url";
 import { isFdroidBuild } from "@/constants/build-profile";
+import { useIsCompactFormFactor } from "@/constants/layout";
 import { getIsElectron, isNative } from "@/constants/platform";
 import { shouldOfferPairingQrScan } from "@/utils/pairing-scan-platform";
 
@@ -161,6 +162,7 @@ export interface WelcomeScreenProps {
 export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const isCompactFormFactor = useIsCompactFormFactor();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const appVersion = resolveAppVersion();
@@ -207,6 +209,7 @@ export function WelcomeScreen({ onHostAdded }: WelcomeScreenProps) {
     isNative,
     isFdroidBuild,
     isElectron: getIsElectron(),
+    isCompactFormFactor,
   });
   const actions: WelcomeAction[] = showQrScan
     ? [

@@ -1,6 +1,9 @@
 import { test, expect } from "../support/fixtures";
-import { gotoAppShell, openSettings } from "../support/helpers/app";
-import { openAddHostFlow } from "../support/helpers/settings";
+import { gotoAppShell } from "../support/helpers/app";
+import { openAddHostFlow, openCompactSettings } from "../support/helpers/settings";
+import { buildOpenProjectRoute } from "@/utils/host-routes";
+
+test.use({ viewport: { width: 390, height: 844 } });
 
 test("browser camera decodes a pairing QR without exposing the offer", async ({ page }) => {
   const remoteDecoderRequests: string[] = [];
@@ -11,7 +14,7 @@ test("browser camera decodes a pairing QR without exposing the offer", async ({ 
   });
 
   await gotoAppShell(page);
-  await openSettings(page);
+  await openCompactSettings(page, buildOpenProjectRoute());
   await openAddHostFlow(page);
   await page.getByTestId("add-host-method-scan-qr").click();
 

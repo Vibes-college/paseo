@@ -179,3 +179,71 @@ test("mounts the Complete Root with isolated routing, owned overlays, and clean 
     await agent.cleanup();
   }
 });
+
+test.describe("mobile embedded Compact", () => {
+  test.use({ viewport: { width: 390, height: 812 } });
+
+  test("keeps only the agent timeline and Composer while retaining one Root", async ({ page }) => {
+    const agent = await seedMockAgentWorkspace({
+      repoPrefix: "mobile-complete-root-mount-",
+      title: "Mobile Compact mount contract",
+      initialPrompt: "Show the Mobile Compact timeline fixture.",
+    });
+
+    try {
+      const internalPath = buildAgentRoute(agent.workspaceId, agent.agentId);
+      await page.goto(`/?paseoSurface=compact&paseoPath=${encodeURIComponent(internalPath)}`);
+      await expect(page.getByRole("textbox", { name: "Message agent..." }).first()).toBeVisible({
+        timeout: 60_000,
+      });
+
+      const compactSurface = page.locator('[data-paseo-host-surface][data-surface="compact"]');
+      await expect(compactSurface).toBeVisible();
+      await expect(page.getByText("Show the Mobile Compact timeline fixture.")).toBeVisible();
+      await expect(page.locator('button[aria-label="Close menu"]:visible')).toHaveCount(0);
+      await expect(page.locator('button[aria-label="Open menu"]:visible')).toHaveCount(0);
+      await expect(page.locator('button[aria-label="Open Explorer sidebar"]:visible')).toHaveCount(
+        0,
+      );
+      await expect(page.getByTestId("sidebar-home")).toHaveCount(0);
+      await expect(page.getByTestId("sidebar-settings")).toHaveCount(0);
+      await expect(page.getByTestId("sidebar-project-list")).toHaveCount(0);
+      await expect(page.locator("[data-paseo-app-root]")).toHaveCount(1);
+
+      const identityBeforeFull = await page.evaluate(() => ({
+        rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,
+        activeConnectionCount:
+          window.__paseoCompleteRootV1!.diagnostics()!.owner!.runtime.activeConnectionCount,
+      }));
+      const compactComposer = page.locator("textarea:visible");
+      await compactComposer.fill("Mobile Compact retained draft");
+      await compactComposer.evaluate((element: HTMLTextAreaElement) =>
+        element.setSelectionRange(7, 14),
+      );
+
+      await page.locator('button[aria-label="Open full Paseo"]:visible').click();
+      await expect(page.locator("#root")).toHaveAttribute("data-paseo-committed-surface", "full");
+      await page.locator('button[aria-label="Return to Compact"]:visible').click();
+      await expect(page.locator("#root")).toHaveAttribute(
+        "data-paseo-committed-surface",
+        "compact",
+      );
+      await expect(compactComposer).toHaveValue("Mobile Compact retained draft");
+      expect(
+        await compactComposer.evaluate((element: HTMLTextAreaElement) => [
+          element.selectionStart,
+          element.selectionEnd,
+        ]),
+      ).toEqual([7, 14]);
+      expect(
+        await page.evaluate(() => ({
+          rootGeneration: window.__paseoCompleteRootV1!.diagnostics()!.rootGeneration,
+          activeConnectionCount:
+            window.__paseoCompleteRootV1!.diagnostics()!.owner!.runtime.activeConnectionCount,
+        })),
+      ).toEqual(identityBeforeFull);
+    } finally {
+      await agent.cleanup();
+    }
+  });
+});

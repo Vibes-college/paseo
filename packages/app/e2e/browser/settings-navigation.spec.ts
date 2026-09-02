@@ -79,11 +79,11 @@ test.describe("Settings sidebar navigation", () => {
     await verifyLegacyHostSettingsRedirect(page);
   });
 
-  test("the + Add host button opens the add-host method modal", async ({ page }) => {
+  test("desktop Browser keeps pairing methods but hides QR scan", async ({ page }) => {
     await gotoAppShell(page);
     await openSettings(page);
     await openAddHostFlow(page);
-    await expectAddHostMethodOptions(page);
+    await expectAddHostMethodOptions(page, { scanQr: "hidden" });
   });
 
   test("direct connection advanced URI round-trips SSL and password into the form", async ({
@@ -157,12 +157,14 @@ test.describe("Settings sidebar navigation", () => {
     });
   });
 
-  test("browser Web exposes QR scan behind an explicit camera permission action", async ({
+  test("compact Browser Web exposes QR scan behind an explicit camera permission action", async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await gotoAppShell(page);
-    await openSettings(page);
+    await openCompactSettings(page, buildOpenProjectRoute());
     await openAddHostFlow(page);
+    await expectAddHostMethodOptions(page, { scanQr: "visible" });
 
     await page.getByTestId("add-host-method-scan-qr").click();
 
@@ -296,6 +298,11 @@ test.describe("Settings — compact master-detail", () => {
 
     await expect(page).toHaveURL(/\/welcome$/);
     await expect(page.getByTestId("welcome-scan-qr")).toBeVisible();
+    await expect(page.getByTestId("welcome-direct-connection")).toBeVisible();
+    await expect(page.getByTestId("welcome-paste-pairing-link")).toBeVisible();
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByTestId("welcome-scan-qr")).toHaveCount(0);
     await expect(page.getByTestId("welcome-direct-connection")).toBeVisible();
     await expect(page.getByTestId("welcome-paste-pairing-link")).toBeVisible();
   });

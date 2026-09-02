@@ -97,6 +97,7 @@ import { useOpenAgentListGesture } from "@/mobile-panels/gestures";
 import { MobilePanelsProvider } from "@/mobile-panels/provider";
 import { I18nProvider } from "@/i18n/provider";
 import { PaseoLauncherDraftBridge } from "@/embedded/launcher-draft-bridge";
+import { usePaseoMountSnapshot } from "@/embedded/mount-environment";
 import {
   KeyboardActionDispatcherProvider,
   useKeyboardActionDispatcher,
@@ -854,6 +855,7 @@ function AppWithSidebar({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hosts = useHosts();
   const storeReady = useStoreReady();
+  const embeddedSurface = usePaseoMountSnapshot()?.surface;
   const routeServerId = useMemo(() => parseServerIdFromPathname(pathname), [pathname]);
   const routeHasKnownHost =
     routeServerId !== null && hosts.some((host) => host.serverId === routeServerId);
@@ -865,7 +867,11 @@ function AppWithSidebar({ children }: { children: ReactNode }) {
       pathname === "/schedules" ||
       routeHasKnownHost);
 
-  return <AppContainer chromeEnabled={shouldShowAppChrome}>{children}</AppContainer>;
+  return (
+    <AppContainer chromeEnabled={shouldShowAppChrome && embeddedSurface !== "compact"}>
+      {children}
+    </AppContainer>
+  );
 }
 
 function FaviconStatusSync() {

@@ -2,15 +2,17 @@ export interface PairingQrScanPlatform {
   isNative: boolean;
   isFdroidBuild: boolean;
   isElectron: boolean;
+  isCompactFormFactor: boolean;
 }
 
 export function shouldOfferPairingQrScan({
   isNative,
   isFdroidBuild,
   isElectron,
+  isCompactFormFactor,
 }: PairingQrScanPlatform): boolean {
-  if (isNative) return !isFdroidBuild;
-  return !isElectron;
+  if (isElectron || isFdroidBuild) return false;
+  return isNative || isCompactFormFactor;
 }
 
 export interface PairingQrCameraEnvironment {
