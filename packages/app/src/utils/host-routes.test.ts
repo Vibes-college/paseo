@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildHostAgentDetailRoute,
+  buildHostChatAgentRoute,
+  buildHostChatRoute,
   buildHostRootRoute,
   buildHostWorkspaceOpenRoute,
   buildHostWorkspaceRoute,
@@ -19,6 +21,7 @@ import {
   normalizeHostSectionSlug,
   normalizeProjectSettingsRouteId,
   parseHostAgentRouteFromPathname,
+  parseHostChatRouteFromPathname,
   parseHostWorkspaceOpenIntentFromPathname,
   parseHostWorkspaceRouteFromPathname,
   parseWorkspaceOpenIntent,
@@ -90,6 +93,21 @@ describe("workspace route parsing", () => {
 
   it("builds host root routes", () => {
     expect(buildHostRootRoute("local")).toBe("/h/local");
+  });
+
+  it("builds and parses host Chat routes without a workspace path", () => {
+    expect(buildHostChatRoute("local")).toBe("/h/local/chat");
+    expect(buildHostChatAgentRoute("local", "agent/one")).toBe("/h/local/chat/agent%2Fone");
+    expect(buildHostChatAgentRoute("", "agent-one")).toBe("/");
+    expect(parseHostChatRouteFromPathname("/h/local/chat")).toEqual({
+      serverId: "local",
+      agentId: null,
+    });
+    expect(parseHostChatRouteFromPathname("/h/local/chat/agent%2Fone")).toEqual({
+      serverId: "local",
+      agentId: "agent/one",
+    });
+    expect(parseHostChatRouteFromPathname("/h/local/chat/agent/extra")).toBeNull();
   });
 
   it("parses workspace open intent from pathname query", () => {

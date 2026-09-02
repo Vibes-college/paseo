@@ -5,7 +5,7 @@ import type {
   FetchAgentHistoryOptions,
 } from "@getpaseo/client/internal/daemon-client";
 import type { AgentHistoryClient, AgentHistoryHost } from "./use-agent-history";
-import { allAgentHistoryQueryKey } from "./agent-history-query-key";
+import { agentHistoryQueryKey, allAgentHistoryQueryKey } from "./agent-history-query-key";
 
 (
   globalThis as unknown as {
@@ -144,6 +144,31 @@ describe("fetchAgentHistoryPage", () => {
     expect(allAgentHistoryQueryKey(["server-b", "server-a"])).toEqual(
       allAgentHistoryQueryKey(["server-a", "server-b"]),
     );
+  });
+
+  it("keeps Build and exact Chat workspace history in separate query scopes", () => {
+    expect(agentHistoryQueryKey("server-1")).not.toEqual(
+      agentHistoryQueryKey("server-1", { workspaceIds: ["wks_chat"] }),
+    );
+  });
+
+  it("passes an exact Chat workspace filter to the daemon", async () => {
+    const client = createClient([historyPayload({ entries: [] })]);
+
+    await fetchAgentHistoryPage({
+      client,
+      serverId: "server-1",
+      cursor: null,
+      workspaceIds: ["wks_chat"],
+    });
+
+    expect(client.calls).toEqual([
+      {
+        filter: { workspaceIds: ["wks_chat"] },
+        sort: [{ key: "updated_at", direction: "desc" }],
+        page: { limit: 200 },
+      } satisfies FetchAgentHistoryOptions,
+    ]);
   });
 
   it("requests the first page with the default limit and updated_at descending sort", async () => {

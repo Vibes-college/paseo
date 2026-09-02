@@ -3,6 +3,7 @@ import {
   skipToken,
   useQueries,
   useQuery,
+  useQueryClient,
   type QueryKey,
   type QueryClient,
   type UseQueryOptions,
@@ -59,6 +60,10 @@ export function useFetchQueries<TData>(
   inputs: FetchQueryInput<TData, Error, TData, QueryKey>[],
 ): UseQueryResult<TData, Error>[] {
   return useQueries({ queries: inputs.map((input) => fetchQueryOptions(input)) });
+}
+
+export function useAppQueryClient(): QueryClient {
+  return useQueryClient();
 }
 
 function replicaQueryOptions<

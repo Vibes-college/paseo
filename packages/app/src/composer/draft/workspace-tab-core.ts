@@ -5,6 +5,18 @@ export interface WorkspaceDraftAutoSubmitConfig {
   model: string | null;
 }
 
+export interface DraftWorkspaceBinding {
+  workspaceId: string;
+  workspaceDirectory: string;
+}
+
+export function resolveDraftWorkspaceBinding(input: {
+  registered: DraftWorkspaceBinding | null;
+  explicit: DraftWorkspaceBinding | null;
+}): DraftWorkspaceBinding | null {
+  return input.explicit ?? input.registered;
+}
+
 export function shouldAllowEmptyDraftText(input: {
   allowsEmptyAutoSubmit: boolean;
   attachments: readonly unknown[];

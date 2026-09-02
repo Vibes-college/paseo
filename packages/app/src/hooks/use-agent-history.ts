@@ -99,15 +99,16 @@ export async function fetchAgentHistoryPage(input: {
   serverId: string;
   cursor: string | null;
   search?: string;
+  workspaceIds?: readonly string[];
 }): Promise<AgentHistoryPage> {
   const payload = await input.client.fetchAgentHistory({
     ...(input.search ? { search: input.search } : {}),
+    ...(input.workspaceIds?.length ? { filter: { workspaceIds: [...input.workspaceIds] } } : {}),
     sort: AGENT_HISTORY_SORT,
     page: input.cursor
       ? { limit: AGENT_HISTORY_PAGE_LIMIT, cursor: input.cursor }
       : { limit: AGENT_HISTORY_PAGE_LIMIT },
   });
-
   const { agents } = buildAgentDirectoryState({
     serverId: input.serverId,
     entries: payload.entries,
@@ -221,6 +222,7 @@ export async function fetchAgentHistoryBatch(input: {
   hosts: readonly AgentHistoryHost[];
   cursorByServerId: AgentHistoryCursorByServerId | null;
   search?: string;
+  workspaceIds?: readonly string[];
 }): Promise<AgentHistoryBatchPage> {
   const cursorByServerId = input.cursorByServerId ?? {};
   const hasCursorFilter = Object.keys(cursorByServerId).length > 0;
@@ -235,6 +237,7 @@ export async function fetchAgentHistoryBatch(input: {
         serverId: host.serverId,
         cursor: cursorByServerId[host.serverId] ?? null,
         ...(input.search ? { search: input.search } : {}),
+        ...(input.workspaceIds?.length ? { workspaceIds: input.workspaceIds } : {}),
       });
       return { host, page };
     }),
@@ -295,6 +298,7 @@ export function useAgentHistory(options: {
   serverId?: string | null;
   enabled?: boolean;
   search?: string;
+  workspaceIds?: readonly string[];
 }): AgentHistoryResult {
   const { t } = useTranslation();
   const daemons = useHosts();
@@ -309,6 +313,13 @@ export function useAgentHistory(options: {
     return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
   }, [options.serverId]);
   const enabled = options.enabled ?? true;
+  const workspaceIds = useMemo(
+    () =>
+      [
+        ...new Set(options.workspaceIds?.filter((workspaceId) => workspaceId.length > 0) ?? []),
+      ].sort(),
+    [options.workspaceIds],
+  );
   // A host the user asked about splits two ways: one this fetch can reach, and
   // one whose sessions will be missing from the answer. Both come out of here,
   // because dropping the unreachable ones silently is what lets the list — and
@@ -353,10 +364,12 @@ export function useAgentHistory(options: {
   }, [isSearchSupported, options.search]);
   const queryKey = useMemo(
     () => [
-      ...(serverId ? agentHistoryQueryKey(serverId) : allAgentHistoryQueryKey(targetServerIds)),
+      ...(serverId
+        ? agentHistoryQueryKey(serverId, { workspaceIds })
+        : allAgentHistoryQueryKey(targetServerIds, { workspaceIds })),
       search,
     ],
-    [search, serverId, targetServerIds],
+    [search, serverId, targetServerIds, workspaceIds],
   );
   const serverLabelById = useMemo(
     () => new Map(daemons.map((daemon) => [daemon.serverId, daemon.label])),
@@ -383,6 +396,7 @@ export function useAgentHistory(options: {
         hosts: targetHosts,
         cursorByServerId: pageParam,
         ...(search ? { search } : {}),
+        ...(workspaceIds.length > 0 ? { workspaceIds } : {}),
       });
     },
   });

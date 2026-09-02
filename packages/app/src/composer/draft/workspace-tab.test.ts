@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { shouldAllowEmptyDraftText, validateDraftSubmission } from "./workspace-tab-core";
+import {
+  resolveDraftWorkspaceBinding,
+  shouldAllowEmptyDraftText,
+  validateDraftSubmission,
+} from "./workspace-tab-core";
 
 const baseComposerState = {
   providerDefinitions: [{ id: "codewhale" }],
@@ -21,6 +25,32 @@ function validate(overrides = {}) {
     ...overrides,
   });
 }
+
+describe("workspace draft binding", () => {
+  test("uses an explicit daemon-owned binding when the workspace is intentionally absent from Build state", () => {
+    expect(
+      resolveDraftWorkspaceBinding({
+        registered: null,
+        explicit: {
+          workspaceId: "wks_chat",
+          workspaceDirectory: "/runtime/chat-workspace",
+        },
+      }),
+    ).toEqual({
+      workspaceId: "wks_chat",
+      workspaceDirectory: "/runtime/chat-workspace",
+    });
+  });
+
+  test("does not guess a workspace ID from a directory", () => {
+    expect(
+      resolveDraftWorkspaceBinding({
+        registered: null,
+        explicit: null,
+      }),
+    ).toBeNull();
+  });
+});
 
 describe("workspace draft agent model validation", () => {
   test("allows a ready provider with no models to submit without a selected model", () => {
