@@ -9,7 +9,7 @@ import { isElectronRuntime, isElectronRuntimeMac } from "@/desktop/host";
 //
 // Default is cross-platform. Gate only when you must:
 //   isWeb      → DOM APIs (document, window, <div>, addEventListener)
-//   isNative   → Native-only APIs (Haptics, StatusBar, push tokens, camera)
+//   isNative   → Native-only APIs (Haptics, StatusBar, push tokens, native camera controls)
 //   isDev      → Development-only diagnostics and instrumentation
 //   isElectron → Desktop wrapper features (file dialogs, titlebar, updates)
 //

@@ -143,7 +143,7 @@ The app runs on iOS, Android, web (browser), and web (Electron desktop). Code is
 | Gate                       | Type      | When to use                                                                                                                 |
 | -------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `isWeb`                    | constant  | DOM APIs — `document`, `window`, `<div>`, `addEventListener`, `ResizeObserver`. This is the **exception**, not the default. |
-| `isNative`                 | constant  | Native-only APIs — Haptics, `StatusBar.currentHeight`, push tokens, camera/scanner, `expo-av`.                              |
+| `isNative`                 | constant  | Native-only APIs — Haptics, `StatusBar.currentHeight`, push tokens, native camera controls, `expo-av`.                      |
 | `getIsElectron()`          | cached fn | Desktop wrapper features — file dialogs, titlebar drag region, daemon management, app updates, dock badges.                 |
 | `useIsCompactFormFactor()` | hook      | Layout decisions — sidebar overlay vs pinned, modal vs full screen, single-panel vs split. From `@/constants/layout`.       |
 
@@ -152,7 +152,8 @@ The app runs on iOS, Android, web (browser), and web (Electron desktop). Code is
 | I need to...                                                   | Use                                                                       |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | Access DOM (`document`, `window`, `<div>`, `addEventListener`) | `if (isWeb)`                                                              |
-| Use a native-only API (Haptics, push tokens, camera)           | `if (isNative)`                                                           |
+| Use a native-only API (Haptics, push tokens, camera controls)  | `if (isNative)`                                                           |
+| Use browser camera access                                      | `if (isWeb)` plus secure-context / `getUserMedia` capability checks       |
 | Use an Electron bridge (file dialog, titlebar, updates)        | `if (getIsElectron())`                                                    |
 | Switch layout between phone and tablet/desktop                 | `useIsCompactFormFactor()`                                                |
 | Show something on hover, always-visible on native              | `isHovered \|\| isNative \|\| isCompact` (hover only works on web)        |
