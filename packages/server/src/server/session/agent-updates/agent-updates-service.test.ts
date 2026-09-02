@@ -98,6 +98,7 @@ function buildHarness() {
   const payloadById = new Map<string, AgentSnapshotPayload>();
   const queuedPayloadBuilds: Promise<AgentSnapshotPayload>[] = [];
   const projectByWorkspaceId = new Map<string, ProjectPlacementPayload | null>();
+  const hiddenWorkspaceIds = new Set<string>();
   let providerVisible: (provider: string) => boolean = () => true;
   let buildAgentPayloadError: Error | null = null;
   let enrichProjectedPayload = false;
@@ -132,6 +133,8 @@ function buildHarness() {
     isProviderVisibleToClient: (provider) => providerVisible(provider),
     buildProjectPlacementForWorkspaceId: async (workspaceId) =>
       projectByWorkspaceId.get(workspaceId) ?? null,
+    isWorkspaceHiddenFromAgentDirectory: async (workspaceId, filter) =>
+      hiddenWorkspaceIds.has(workspaceId) && !filter?.workspaceIds?.includes(workspaceId),
     emitWorkspaceUpdateForWorkspaceId: async (workspaceId) => {
       workspaceUpdates.push(workspaceId);
     },
@@ -164,6 +167,9 @@ function buildHarness() {
     },
     setProviderVisible(fn: (provider: string) => boolean) {
       providerVisible = fn;
+    },
+    hideWorkspace(workspaceId: string) {
+      hiddenWorkspaceIds.add(workspaceId);
     },
     useProjectedPayload() {
       enrichProjectedPayload = true;
@@ -267,6 +273,16 @@ describe("matchesAgentUpdatesFilter", () => {
     ).toBe(false);
   });
 
+  test("workspaceIds filter matches exact opaque workspace ownership", () => {
+    const agent = makeAgentPayload({ id: "a", workspaceId: "ws-chat" });
+    expect(
+      matchesAgentUpdatesFilter({ agent, project, filter: { workspaceIds: ["ws-chat"] } }),
+    ).toBe(true);
+    expect(
+      matchesAgentUpdatesFilter({ agent, project, filter: { workspaceIds: ["ws-build"] } }),
+    ).toBe(false);
+  });
+
   test("projectKeys filter, ignoring blank entries", () => {
     const agent = makeAgentPayload({ id: "a" });
     const inProject = makeProject({ projectKey: "proj-1" });
@@ -289,6 +305,31 @@ describe("matchesAgentUpdatesFilter", () => {
 });
 
 describe("forwardLiveAgent", () => {
+  test("hides Chat agents from Build subscriptions and allows an exact Chat workspace subscription", async () => {
+    const h = buildHarness();
+    const agent = h.register(makeAgentPayload({ id: "chat", workspaceId: "ws-chat" }));
+    h.hideWorkspace("ws-chat");
+    h.service.beginSubscription({ subscriptionId: "build", filter: {} });
+    h.service.flushBootstrapped("build");
+
+    await h.service.forwardLiveAgent(h.managed(agent.id));
+    expect(h.agentUpdates()).toEqual([]);
+
+    h.service.beginSubscription({
+      subscriptionId: "chat",
+      filter: { workspaceIds: ["ws-chat"] },
+    });
+    h.service.flushBootstrapped("chat");
+    await h.service.forwardLiveAgent(h.managed(agent.id));
+    expect(h.agentUpdates()).toEqual([
+      {
+        kind: "upsert",
+        agent: expect.objectContaining({ id: "chat", workspaceId: "ws-chat" }),
+        project: makeProject(),
+      },
+    ]);
+  });
+
   test("emits snapshots for one agent in forward call order", async () => {
     const h = buildHarness();
     h.service.beginSubscription({ subscriptionId: "sub", filter: {} });

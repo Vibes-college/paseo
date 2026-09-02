@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { describe, expect, test } from "vitest";
 import {
+  ChatWorkspaceResolveRequestSchema,
+  ChatWorkspaceResolveResponseSchema,
   RecentProviderSessionDescriptorPayloadSchema,
+  ServerInfoStatusPayloadSchema,
   SessionInboundMessageSchema,
   SessionOutboundMessageSchema,
   WorkspaceCreateRequestSchema,
@@ -1181,5 +1184,42 @@ describe("workspace message schemas", () => {
     });
     expect(newDirectory.type).toBe("workspace.create.request");
     expect(newDirectory.source.kind).toBe("directory");
+  });
+
+  test("parses the capability-gated hidden Chat workspace RPC", () => {
+    const request = {
+      type: "chat.workspace.resolve.request",
+      requestId: "req-chat-workspace",
+    } as const;
+    expect(ChatWorkspaceResolveRequestSchema.parse(request)).toEqual(request);
+    expect(SessionInboundMessageSchema.parse(request)).toEqual(request);
+    expect(
+      SessionInboundMessageSchema.safeParse({ type: "chat.workspace.resolve.request" }).success,
+    ).toBe(false);
+    const historyRequest = SessionInboundMessageSchema.parse({
+      type: "fetch_agent_history_request",
+      requestId: "req-chat-history",
+      filter: { workspaceIds: ["wks_chat"] },
+    });
+    expect(historyRequest).toMatchObject({ filter: { workspaceIds: ["wks_chat"] } });
+
+    const response = {
+      type: "chat.workspace.resolve.response",
+      payload: {
+        requestId: "req-chat-workspace",
+        workspace: { workspaceId: "wks_chat", cwd: "/hidden/chat" },
+        error: null,
+      },
+    } as const;
+    expect(ChatWorkspaceResolveResponseSchema.parse(response)).toEqual(response);
+    expect(SessionOutboundMessageSchema.parse(response)).toEqual(response);
+
+    expect(
+      ServerInfoStatusPayloadSchema.parse({
+        status: "server_info",
+        serverId: "srv_test",
+        features: { chatWorkspace: true },
+      }).features?.chatWorkspace,
+    ).toBe(true);
   });
 });

@@ -683,6 +683,10 @@ export type FetchWorkspacesOptions = Omit<FetchWorkspacesRequest, "type" | "requ
 };
 export type FetchWorkspacesEntry = FetchWorkspacesPayload["entries"][number];
 export type FetchWorkspacesPageInfo = FetchWorkspacesPayload["pageInfo"];
+export type ChatWorkspaceResolvePayload = Extract<
+  SessionOutboundMessage,
+  { type: "chat.workspace.resolve.response" }
+>["payload"];
 export type WorkspaceLabelListPayload = Extract<
   SessionOutboundMessage,
   { type: "workspace.label.list.response" }
@@ -2136,6 +2140,13 @@ export class DaemonClient {
         }
         return msg.payload;
       },
+    });
+  }
+
+  resolveChatWorkspace(requestId?: string): Promise<ChatWorkspaceResolvePayload> {
+    return this.sendNamespacedCorrelatedSessionRequest({
+      requestId,
+      message: { type: "chat.workspace.resolve.request" },
     });
   }
 

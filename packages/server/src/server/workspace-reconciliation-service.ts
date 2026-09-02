@@ -1,11 +1,13 @@
 import { statSync, watch as watchPath } from "node:fs";
 import type { ProjectCheckoutLitePayload } from "@getpaseo/protocol/messages";
 import type pino from "pino";
-import type {
-  ProjectRegistry,
-  WorkspaceRegistry,
-  PersistedProjectRecord,
-  PersistedWorkspaceRecord,
+import {
+  isUserVisibleProjectRecord,
+  isUserVisibleWorkspaceRecord,
+  type ProjectRegistry,
+  type WorkspaceRegistry,
+  type PersistedProjectRecord,
+  type PersistedWorkspaceRecord,
 } from "./workspace-registry.js";
 import type { WorkspaceGitService } from "./workspace-git-service.js";
 import { areEquivalentPaths } from "../utils/path.js";
@@ -157,6 +159,12 @@ export class WorkspaceReconciliationService {
     this.unsubscribeRegistry =
       this.projectRegistry.subscribeToMutations?.(async (mutation) => {
         try {
+          if (
+            mutation.internalPurpose === "chat" ||
+            (mutation.project && !isUserVisibleProjectRecord(mutation.project))
+          ) {
+            return;
+          }
           // Project creation does not resolve until its root watch is installed,
           // closing the git-init race for newly added empty projects.
           await this.syncProjectRootWatches();
@@ -198,14 +206,22 @@ export class WorkspaceReconciliationService {
     ]);
     const workspacesByProject = new Map<string, PersistedWorkspaceRecord[]>();
     for (const workspace of workspaces) {
-      if (workspace.archivedAt || this.inspectDirectory(workspace.cwd) !== "directory") continue;
+      if (
+        workspace.archivedAt ||
+        !isUserVisibleWorkspaceRecord(workspace) ||
+        this.inspectDirectory(workspace.cwd) !== "directory"
+      )
+        continue;
       const siblings = workspacesByProject.get(workspace.projectId) ?? [];
       siblings.push(workspace);
       workspacesByProject.set(workspace.projectId, siblings);
     }
     await this.reconcileGitMetadataForProjects(
       projects.filter(
-        (project) => !project.archivedAt && this.inspectDirectory(project.rootPath) === "directory",
+        (project) =>
+          !project.archivedAt &&
+          isUserVisibleProjectRecord(project) &&
+          this.inspectDirectory(project.rootPath) === "directory",
       ),
       workspacesByProject,
       changes,
@@ -221,8 +237,12 @@ export class WorkspaceReconciliationService {
     const allProjects = await this.projectRegistry.list();
     const allWorkspaces = await this.workspaceRegistry.list();
 
-    const activeProjects = allProjects.filter((p) => !p.archivedAt);
-    const activeWorkspaces = allWorkspaces.filter((w) => !w.archivedAt);
+    const activeProjects = allProjects.filter(
+      (project) => !project.archivedAt && isUserVisibleProjectRecord(project),
+    );
+    const activeWorkspaces = allWorkspaces.filter(
+      (workspace) => !workspace.archivedAt && isUserVisibleWorkspaceRecord(workspace),
+    );
     const workspaceDirectoryStates = activeWorkspaces.map((workspace) => ({
       workspace,
       state: this.inspectDirectory(workspace.cwd),
@@ -405,7 +425,9 @@ export class WorkspaceReconciliationService {
     if (this.disposed) return;
     const projects = await this.projectRegistry.list();
     if (this.disposed) return;
-    const activeProjects = projects.filter((project) => !project.archivedAt);
+    const activeProjects = projects.filter(
+      (project) => !project.archivedAt && isUserVisibleProjectRecord(project),
+    );
 
     for (let index = this.watchers.length - 1; index >= 0; index -= 1) {
       const target = this.watchers[index]!;
@@ -485,7 +507,9 @@ export class WorkspaceReconciliationService {
         if (change.kind === "project_updated") projectIds.add(change.projectId);
       }
       if (projectIds.size > 0) {
-        const workspaces = await this.workspaceRegistry.list();
+        const workspaces = (await this.workspaceRegistry.list()).filter(
+          isUserVisibleWorkspaceRecord,
+        );
         for (const workspaceId of workspaceIdsForProjects(workspaces, projectIds)) {
           workspaceIds.add(workspaceId);
         }

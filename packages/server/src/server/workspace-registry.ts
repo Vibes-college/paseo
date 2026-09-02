@@ -13,6 +13,7 @@ import {
 
 const PersistedProjectRecordSchema = z.object({
   projectId: z.string(),
+  internalPurpose: z.literal("chat").optional(),
   rootPath: z.string(),
   kind: z.enum(["git", "non_git"]),
   displayName: z.string(),
@@ -43,6 +44,7 @@ const PersistedProjectRecordSchema = z.object({
 const PersistedWorkspaceRecordSchema = z.object({
   workspaceId: z.string(),
   projectId: z.string(),
+  internalPurpose: z.literal("chat").optional(),
   cwd: z.string(),
   kind: z.enum(["local_checkout", "worktree", "directory"]),
   displayName: z.string(),
@@ -98,10 +100,19 @@ const PersistedWorkspaceRecordSchema = z.object({
 export type PersistedProjectRecord = z.infer<typeof PersistedProjectRecordSchema>;
 export type PersistedWorkspaceRecord = z.infer<typeof PersistedWorkspaceRecordSchema>;
 
+export function isUserVisibleProjectRecord(record: PersistedProjectRecord): boolean {
+  return record.internalPurpose === undefined;
+}
+
+export function isUserVisibleWorkspaceRecord(record: PersistedWorkspaceRecord): boolean {
+  return record.internalPurpose === undefined;
+}
+
 export interface WorkspaceMutation {
   kind: "upsert" | "archive" | "remove";
   workspaceId: string;
   workspace: PersistedWorkspaceRecord | null;
+  internalPurpose?: "chat";
   expectsInitialAgent?: boolean;
 }
 
@@ -117,6 +128,7 @@ export interface ProjectMutation {
   kind: "upsert" | "archive" | "remove";
   projectId: string;
   project: PersistedProjectRecord | null;
+  internalPurpose?: "chat";
 }
 
 export interface ProjectRegistry {
@@ -365,11 +377,7 @@ export class FileBackedProjectRegistry
   private allocationQueue: Promise<void> = Promise.resolve();
   private readonly projectIdFactory: () => string;
   private readonly mutationListeners = new Set<
-    (mutation: {
-      kind: "upsert" | "archive" | "remove";
-      projectId: string;
-      project: PersistedProjectRecord | null;
-    }) => void | Promise<void>
+    (mutation: ProjectMutation) => void | Promise<void>
   >();
 
   constructor(
@@ -448,13 +456,7 @@ export class FileBackedProjectRegistry
     }
   }
 
-  subscribeToMutations(
-    listener: (mutation: {
-      kind: "upsert" | "archive" | "remove";
-      projectId: string;
-      project: PersistedProjectRecord | null;
-    }) => void | Promise<void>,
-  ): () => void {
+  subscribeToMutations(listener: (mutation: ProjectMutation) => void | Promise<void>): () => void {
     this.mutationListeners.add(listener);
     return () => this.mutationListeners.delete(listener);
   }
@@ -483,14 +485,15 @@ export class FileBackedProjectRegistry
   override async remove(projectId: string): Promise<void> {
     const project = await this.removeIfPresent(projectId);
     if (!project) return;
-    await this.notifyMutation({ kind: "remove", projectId, project: null });
+    await this.notifyMutation({
+      kind: "remove",
+      projectId,
+      project: null,
+      ...(project.internalPurpose ? { internalPurpose: project.internalPurpose } : {}),
+    });
   }
 
-  private async notifyMutation(mutation: {
-    kind: "upsert" | "archive" | "remove";
-    projectId: string;
-    project: PersistedProjectRecord | null;
-  }): Promise<void> {
+  private async notifyMutation(mutation: ProjectMutation): Promise<void> {
     await Promise.all([...this.mutationListeners].map((listener) => listener(mutation)));
   }
 }
@@ -574,7 +577,12 @@ export class FileBackedWorkspaceRegistry
   override async remove(workspaceId: string): Promise<void> {
     const workspace = await this.removeIfPresent(workspaceId);
     if (!workspace) return;
-    await this.notifyMutation({ kind: "remove", workspaceId, workspace: null });
+    await this.notifyMutation({
+      kind: "remove",
+      workspaceId,
+      workspace: null,
+      ...(workspace.internalPurpose ? { internalPurpose: workspace.internalPurpose } : {}),
+    });
   }
 
   async commitWorkspaceLabelMutation<TResult>(input: {
@@ -633,6 +641,7 @@ export class FileBackedWorkspaceRegistry
 
 export function createPersistedProjectRecord(input: {
   projectId: string;
+  internalPurpose?: "chat";
   rootPath: string;
   kind: PersistedProjectKind;
   displayName: string;
@@ -659,6 +668,7 @@ export function resolveProjectDisplayName(record: PersistedProjectRecord): strin
 export function createPersistedWorkspaceRecord(input: {
   workspaceId: string;
   projectId: string;
+  internalPurpose?: "chat";
   cwd: string;
   kind: PersistedWorkspaceKind;
   displayName: string;

@@ -14,7 +14,11 @@ import {
 import { getParentAgentIdFromLabels } from "@getpaseo/protocol/agent-labels";
 import { SortablePager } from "./pagination/sortable-pager.js";
 import type { PersistedProjectRecord, PersistedWorkspaceRecord } from "./workspace-registry.js";
-import { resolveProjectDisplayName } from "./workspace-registry.js";
+import {
+  isUserVisibleProjectRecord,
+  isUserVisibleWorkspaceRecord,
+  resolveProjectDisplayName,
+} from "./workspace-registry.js";
 import {
   deriveTerminalActivityStatusBucket,
   type TerminalActivity,
@@ -220,14 +224,19 @@ export class WorkspaceDirectory {
 
     const activeProjects = new Map(
       persistedProjects
-        .filter((project) => !project.archivedAt)
+        .filter((project) => !project.archivedAt && isUserVisibleProjectRecord(project))
         .map((project) => [project.projectId, project] as const),
     );
-    const archivedProjectIds = new Set(
-      persistedProjects.filter((project) => project.archivedAt).map((project) => project.projectId),
+    const unavailableProjectIds = new Set(
+      persistedProjects
+        .filter((project) => project.archivedAt || !isUserVisibleProjectRecord(project))
+        .map((project) => project.projectId),
     );
     const activeRecords = persistedWorkspaces.filter(
-      (workspace) => !workspace.archivedAt && !archivedProjectIds.has(workspace.projectId),
+      (workspace) =>
+        !workspace.archivedAt &&
+        isUserVisibleWorkspaceRecord(workspace) &&
+        !unavailableProjectIds.has(workspace.projectId),
     );
     const descriptorsByWorkspaceId = new Map<string, WorkspaceDescriptorPayload>();
     const workspaceIds = options.workspaceIds ? new Set(options.workspaceIds) : null;
@@ -557,12 +566,15 @@ export class WorkspaceDirectory {
     ]);
     const projectIdsWithActiveWorkspaces = new Set(
       persistedWorkspaces
-        .filter((workspace) => !workspace.archivedAt)
+        .filter((workspace) => !workspace.archivedAt && isUserVisibleWorkspaceRecord(workspace))
         .map((workspace) => workspace.projectId),
     );
     return persistedProjects
       .filter(
-        (project) => !project.archivedAt && !projectIdsWithActiveWorkspaces.has(project.projectId),
+        (project) =>
+          !project.archivedAt &&
+          isUserVisibleProjectRecord(project) &&
+          !projectIdsWithActiveWorkspaces.has(project.projectId),
       )
       .map((project) => ({
         projectId: project.projectId,

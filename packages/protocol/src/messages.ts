@@ -909,6 +909,8 @@ export const AudioPlayedMessageSchema = z.object({
 const AgentDirectoryFilterSchema = z.object({
   labels: z.record(z.string(), z.string()).optional(),
   projectKeys: z.array(z.string()).optional(),
+  // COMPAT(chatWorkspace): added in v0.7.0, remove gate after 2027-09-02.
+  workspaceIds: z.array(z.string()).optional(),
   statuses: z.array(AgentStatusSchema).optional(),
   includeArchived: z.boolean().optional(),
   requiresAttention: z.boolean().optional(),
@@ -2519,6 +2521,17 @@ export const WorkspaceCreateRequestSchema = z.object({
   ]),
 });
 
+export const ChatWorkspaceResolveRequestSchema = z.object({
+  type: z.literal("chat.workspace.resolve.request"),
+  requestId: z.string(),
+});
+
+export const ChatWorkspaceResolveErrorCodeSchema = z.enum([
+  "duplicate_records",
+  "ownership_conflict",
+  "resolve_failed",
+]);
+
 export const WorkspaceClearAttentionRequestSchema = z.object({
   type: z.literal("workspace.clear_attention.request"),
   workspaceId: z.union([z.string(), z.array(z.string())]),
@@ -3111,6 +3124,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   ProjectGithubCloneRequestSchema,
   ArchiveWorkspaceRequestSchema,
   WorkspaceCreateRequestSchema,
+  ChatWorkspaceResolveRequestSchema,
   WorkspaceClearAttentionRequestSchema,
   FileExplorerRequestSchema,
   FileSubscribeRequestSchema,
@@ -3338,6 +3352,8 @@ export const ServerInfoStatusPayloadSchema = z
         directorySync: z.boolean().optional(),
         // COMPAT(workspaceLabels): added in v0.5.0, remove after 2027-08-14.
         workspaceLabels: z.boolean().optional(),
+        // COMPAT(chatWorkspace): added in v0.7.0, remove gate after 2027-09-02.
+        chatWorkspace: z.boolean().optional(),
         // COMPAT(checkoutForgeSetAutoMerge): added in v0.2.0-beta.1. Remove the
         // feature gate and checkoutGithubSetAutoMerge fallback after 2027-01-17
         // once the supported daemon floor is >= v0.2.0.
@@ -4503,6 +4519,25 @@ export const WorkspaceCreateResponseSchema = z.object({
     error: z.string().nullable(),
     errorCode: z.string().optional(),
     requestId: z.string(),
+  }),
+});
+
+export const ChatWorkspaceResolveResponseSchema = z.object({
+  type: z.literal("chat.workspace.resolve.response"),
+  payload: z.object({
+    requestId: z.string(),
+    workspace: z
+      .object({
+        workspaceId: z.string(),
+        cwd: z.string(),
+      })
+      .nullable(),
+    error: z
+      .object({
+        code: ChatWorkspaceResolveErrorCodeSchema,
+        message: z.string(),
+      })
+      .nullable(),
   }),
 });
 
@@ -6353,6 +6388,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   CancelAgentResponseMessageSchema,
   ClearAgentAttentionResponseMessageSchema,
   WorkspaceCreateResponseSchema,
+  ChatWorkspaceResolveResponseSchema,
   WorkspaceClearAttentionResponseSchema,
   SendAgentMessageResponseMessageSchema,
   SetVoiceModeResponseMessageSchema,
@@ -6588,6 +6624,9 @@ export type WorkspaceRecoveryRestoreResponse = z.infer<
 >;
 export type WorkspaceCreateRequest = z.infer<typeof WorkspaceCreateRequestSchema>;
 export type WorkspaceCreateResponse = z.infer<typeof WorkspaceCreateResponseSchema>;
+export type ChatWorkspaceResolveRequest = z.infer<typeof ChatWorkspaceResolveRequestSchema>;
+export type ChatWorkspaceResolveErrorCode = z.infer<typeof ChatWorkspaceResolveErrorCodeSchema>;
+export type ChatWorkspaceResolveResponse = z.infer<typeof ChatWorkspaceResolveResponseSchema>;
 export type ProjectRenameResponsePayload = z.infer<typeof ProjectRenameResponsePayloadSchema>;
 export type ProjectRemoveResponsePayload = z.infer<typeof ProjectRemoveResponsePayloadSchema>;
 export type WaitForFinishResponseMessage = z.infer<typeof WaitForFinishResponseMessageSchema>;
