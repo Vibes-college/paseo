@@ -14,6 +14,7 @@ import { TitlebarDragRegion } from "@/components/desktop/titlebar-drag-region";
 
 interface ScreenHeaderProps {
   left?: ReactNode;
+  center?: ReactNode;
   right?: ReactNode;
   leftStyle?: StyleProp<ViewStyle>;
   rightStyle?: StyleProp<ViewStyle>;
@@ -27,6 +28,7 @@ interface ScreenHeaderProps {
  */
 export function ScreenHeader({
   left,
+  center,
   right,
   leftStyle,
   rightStyle,
@@ -58,8 +60,17 @@ export function ScreenHeader({
           style={rowStyle}
         >
           <TitlebarDragRegion />
-          <View style={leftCombinedStyle}>{left}</View>
-          <View style={rightCombinedStyle}>{right}</View>
+          <View pointerEvents="box-none" style={leftCombinedStyle}>
+            {left}
+          </View>
+          {center ? (
+            <View pointerEvents="box-none" style={styles.center}>
+              {center}
+            </View>
+          ) : null}
+          <View pointerEvents="box-none" style={rightCombinedStyle}>
+            {right}
+          </View>
         </WindowChromeSafeArea>
       </View>
     </View>
@@ -68,6 +79,7 @@ export function ScreenHeader({
 
 const styles = StyleSheet.create((theme) => ({
   header: {
+    width: "100%",
     backgroundColor: theme.colors.surface0,
   },
   inner: {},
@@ -85,13 +97,25 @@ const styles = StyleSheet.create((theme) => ({
     userSelect: "none",
   },
   left: {
+    zIndex: 1,
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[2],
     minWidth: 0,
   },
+  center: {
+    zIndex: 1,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   right: {
+    zIndex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[2],

@@ -23,35 +23,33 @@ interface SidebarMenuToggleProps {
   tooltipSide?: "left" | "right" | "top" | "bottom";
   testID?: string;
   nativeID?: string;
+  forceVisible?: boolean;
+  vibesIcon?: boolean;
 }
 
 const MOBILE_MENU_LINE_WIDTH = 16;
-const MOBILE_MENU_LINE_SHORT_WIDTH = 8;
 const MOBILE_MENU_LINE_HEIGHT = 1.5;
 
 function MobileMenuIcon({ color }: { color: string }) {
   const lineStyle = useMemo(() => [styles.mobileMenuLine, { backgroundColor: color }], [color]);
-  const shortLineStyle = useMemo(
-    () => [styles.mobileMenuLine, styles.mobileMenuLineShort, { backgroundColor: color }],
-    [color],
-  );
   return (
-    <View style={styles.mobileMenuIcon} pointerEvents="none">
-      <View style={lineStyle} />
-      <View style={lineStyle} />
-      <View style={shortLineStyle} />
+    <View style={styles.mobileMenuIcon} pointerEvents="none" testID="vibes-menu-icon">
+      <View style={lineStyle} testID="vibes-menu-icon-line" />
+      <View style={lineStyle} testID="vibes-menu-icon-line" />
+      <View style={lineStyle} testID="vibes-menu-icon-line" />
     </View>
   );
 }
 
 function SidebarMenuToggleButton({
   isMobile,
+  vibesIcon = false,
   extraMutedIdleIcon = false,
   resolvedStyle,
   tooltipSide = "right",
   testID = "menu-button",
   nativeID = "menu-button",
-}: Omit<SidebarMenuToggleProps, "style"> & {
+}: Omit<SidebarMenuToggleProps, "style" | "forceVisible"> & {
   isMobile: boolean;
   extraMutedIdleIcon?: boolean;
   resolvedStyle: StyleProp<ViewStyle>;
@@ -85,7 +83,7 @@ function SidebarMenuToggleButton({
       accessibilityLabel={isOpen ? t("shell.menu.close") : t("shell.menu.open")}
       accessibilityState={accessibilityState}
     >
-      {isMobile ? (
+      {isMobile || vibesIcon ? (
         <MobileMenuIcon
           color={
             extraMutedIdleIcon ? theme.colors.foregroundExtraMuted : theme.colors.foregroundMuted
@@ -104,7 +102,11 @@ function SidebarMenuToggleButton({
   );
 }
 
-export function SidebarMenuToggle({ style, ...props }: SidebarMenuToggleProps = {}) {
+export function SidebarMenuToggle({
+  style,
+  forceVisible = false,
+  ...props
+}: SidebarMenuToggleProps = {}) {
   const isMobile = useIsCompactFormFactor();
   const ownsTopLeft = useOwnsWindowChromeCorner("top-left");
   const hasTopLeftWindowControls = useHasWindowChromeObstruction("top-left");
@@ -114,11 +116,11 @@ export function SidebarMenuToggle({ style, ...props }: SidebarMenuToggleProps = 
     [resolvedStyle],
   );
 
-  if (!isMobile && !ownsTopLeft) {
+  if (!forceVisible && !isMobile && !ownsTopLeft) {
     return null;
   }
 
-  if (!isMobile && hasTopLeftWindowControls) {
+  if (!forceVisible && !isMobile && hasTopLeftWindowControls) {
     return (
       <View pointerEvents="none" style={placeholderStyle}>
         <View style={styles.desktopMenuIconSpace} />
@@ -181,8 +183,5 @@ const styles = StyleSheet.create((theme) => ({
     width: MOBILE_MENU_LINE_WIDTH,
     height: MOBILE_MENU_LINE_HEIGHT,
     borderRadius: theme.borderRadius.full,
-  },
-  mobileMenuLineShort: {
-    width: MOBILE_MENU_LINE_SHORT_WIDTH,
   },
 }));

@@ -9,13 +9,14 @@ import {
   FloatingPanelPortalHost,
   FloatingPanelPortalHostNameProvider,
 } from "@/components/ui/floating-panel-portal";
-import { MenuHeader } from "@/components/headers/menu-header";
+import { PaseoProductHeader } from "@/components/headers/paseo-product-header";
 import { Button } from "@/components/ui/button";
 import { useAppQueryClient, useFetchQuery } from "@/data/query";
 import { agentHistoryQueryKey } from "@/hooks/agent-history-query-key";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { WorkspaceDraftAgentTab } from "@/composer/draft/workspace-tab";
 import { AgentPanelContent } from "@/panels/agent-panel";
+import { ChatHeaderMenu } from "@/screens/workspace/workspace-header-menu";
 import {
   createPaneFocusContextValue,
   PaneFocusProvider,
@@ -28,11 +29,7 @@ import { applyLegacyDaemonWorkspaceOwnership } from "@/workspace/legacy-daemon-w
 import { normalizeAgentSnapshot } from "@/utils/agent-snapshots";
 import { buildHostChatAgentRoute } from "@/utils/host-routes";
 import type { WorkspaceDraftTabSetup } from "@/workspace-tabs/model";
-import {
-  navigateToChatDraft,
-  rememberChatRoute,
-  useRememberChatRoute,
-} from "@/chat-runtime/navigation";
+import { navigateToChatDraft, rememberChatRoute } from "@/chat-runtime/navigation";
 import { useChatRuntime } from "@/chat-runtime/use-chat-runtime";
 
 /**
@@ -55,11 +52,6 @@ export function ChatScreen({ serverId, agentId }: { serverId: string; agentId?: 
   const client = useHostRuntimeClient(serverId);
   const runtime = useChatRuntime(serverId);
   const retryRuntime = runtime.retry;
-  const routeTarget = useMemo(
-    () => (agentId ? ({ kind: "agent", agentId } as const) : ({ kind: "draft" } as const)),
-    [agentId],
-  );
-  useRememberChatRoute(serverId, routeTarget);
   const readyRuntime = runtime.resolution.status === "ready" ? runtime.resolution : null;
   const expectedWorkspaceId = readyRuntime?.workspace.workspaceId ?? null;
   const agentQuery = useFetchQuery({
@@ -77,9 +69,14 @@ export function ChatScreen({ serverId, agentId }: { serverId: string; agentId?: 
   });
 
   useEffect(() => {
+    if (!agentId) {
+      rememberChatRoute(serverId, { kind: "draft" });
+      return;
+    }
     if (!agentQuery.data) return;
+    rememberChatRoute(serverId, { kind: "agent", agentId });
     storeChatAgentDetail(serverId, agentQuery.data);
-  }, [agentQuery.data, serverId]);
+  }, [agentId, agentQuery.data, serverId]);
 
   const initialSetup = useMemo<WorkspaceDraftTabSetup | undefined>(() => {
     if (!readyRuntime) return undefined;
@@ -113,6 +110,11 @@ export function ChatScreen({ serverId, agentId }: { serverId: string; agentId?: 
   const handleAgentRetry = useCallback(() => {
     void refetchAgent();
   }, [refetchAgent]);
+  const handleNewChat = useCallback(() => navigateToChatDraft(serverId), [serverId]);
+  const headerActions = useMemo(
+    () => <ChatHeaderMenu onNewChat={handleNewChat} />,
+    [handleNewChat],
+  );
   const portalHostName = useMemo(() => `chat-floating-panels:${serverId}`, [serverId]);
 
   let content;
@@ -181,7 +183,7 @@ export function ChatScreen({ serverId, agentId }: { serverId: string; agentId?: 
 
   return (
     <View style={styles.container} testID="chat-mode-screen">
-      <MenuHeader title="Chat" />
+      <PaseoProductHeader serverId={serverId} mode="chat" actions={headerActions} />
       <View style={styles.content}>
         <FloatingPanelPortalHostNameProvider hostName={portalHostName}>
           {content}

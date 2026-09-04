@@ -41,10 +41,9 @@ export function navigateToChatAgent(serverId: string, agentId: string): void {
   router.navigate(buildHostChatAgentRoute(serverId, agentId));
 }
 
-export async function navigateToRememberedChat(serverId: string): Promise<void> {
-  await hydrateChatRouteSelections();
-  const target = routeSelections.get(serverId) ?? { kind: "draft" as const };
-  if (target.kind === "agent") {
+export function navigateToRememberedChat(serverId: string): void {
+  const target = routeSelections.get(serverId);
+  if (target?.kind === "agent") {
     router.navigate(buildHostChatAgentRoute(serverId, target.agentId));
     return;
   }

@@ -7,7 +7,7 @@ export const FOOTER_HEIGHT = 75;
 // Shared header inner height (excluding safe area insets and border)
 // Used by both agent header (ScreenHeader) and explorer sidebar header
 // This ensures both headers have the same visual height
-export const HEADER_INNER_HEIGHT = 36;
+export const HEADER_INNER_HEIGHT = 44;
 export const HEADER_INNER_HEIGHT_MOBILE = 56;
 export const WORKSPACE_SECONDARY_HEADER_HEIGHT = 36;
 export const HEADER_TOP_PADDING_MOBILE = 8;
