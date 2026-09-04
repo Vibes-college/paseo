@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   Copy,
   Ellipsis,
+  FolderOpen,
   Globe,
   Import as ImportIcon,
   Settings,
@@ -36,6 +37,7 @@ import type { Theme } from "@/styles/theme";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
 const ThemedCopy = withUnistyles(Copy);
+const ThemedFolderOpen = withUnistyles(FolderOpen);
 const ThemedSquarePen = withUnistyles(SquarePen);
 const ThemedGlobe = withUnistyles(Globe);
 const ThemedImport = withUnistyles(ImportIcon);
@@ -48,6 +50,7 @@ const MENU_NEW_BROWSER_ICON = <ThemedGlobe size={16} uniProps={mutedColorMapping
 const MENU_NEW_TERMINAL_ICON = <TerminalProfileIcon iconKey={undefined} size={16} />;
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
+const MENU_FILES_ICON = <ThemedFolderOpen size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
@@ -59,13 +62,6 @@ function WorkspaceHeaderMenuTriggerIcon() {
 }
 
 /**
- * The compact header buttons draw at 32pt, under the 44pt touch minimum, and sit flush against
- * each other — so the slop can only grow vertically. Widening it would put two buttons' slop over
- * the same pixels, which is a worse miss than a small target.
- */
-const COMPACT_HEADER_BUTTON_HIT_SLOP = { top: 8, bottom: 8 } as const;
-
-/**
  * Actions that belong to the workspace itself rather than to a tab. Both header menus render them,
  * from the same callbacks, so the two surfaces can't drift.
  */
@@ -74,6 +70,7 @@ export interface WorkspaceHeaderWorkspaceActions {
   showWorkspaceSetup: boolean;
   importAgentDisabled: boolean;
   copyPathDisabled: boolean;
+  onOpenFiles: () => void;
   onOpenImportSheet: () => void;
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
@@ -85,6 +82,7 @@ function WorkspaceHeaderWorkspaceActionItems({
   showWorkspaceSetup,
   importAgentDisabled,
   copyPathDisabled,
+  onOpenFiles,
   onOpenImportSheet,
   onCopyWorkspacePath,
   onCopyBranchName,
@@ -93,6 +91,14 @@ function WorkspaceHeaderWorkspaceActionItems({
   const { t } = useTranslation();
   return (
     <>
+      <DropdownMenuItem
+        testID="workspace-header-files"
+        leading={MENU_FILES_ICON}
+        onSelect={onOpenFiles}
+      >
+        {t("workspace.tabs.actions.files")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
       <DropdownMenuItem
         testID="workspace-header-copy-path"
         leading={MENU_COPY_ICON}
@@ -143,7 +149,11 @@ function workspaceHeaderMenuButtonStyle({
   pressed: boolean;
   open: boolean;
 }) {
-  return iconButtonChromeStyle({ size: "large", state: { hovered, pressed, open } });
+  return iconButtonChromeStyle({
+    size: "large",
+    state: { hovered, pressed, open },
+    style: styles.touchTarget,
+  });
 }
 
 /**
@@ -156,6 +166,7 @@ export function WorkspaceHeaderMenuDesktop(props: WorkspaceHeaderWorkspaceAction
       <DropdownMenuTrigger
         testID="workspace-header-menu-trigger"
         style={workspaceHeaderMenuButtonStyle}
+        nativeID="paseo-product-actions"
         accessibilityRole="button"
         accessibilityLabel={t("workspace.header.actions.workspaceActions")}
       >
@@ -163,6 +174,31 @@ export function WorkspaceHeaderMenuDesktop(props: WorkspaceHeaderWorkspaceAction
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" width={220} testID="workspace-header-menu">
         <WorkspaceHeaderWorkspaceActionItems {...props} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function ChatHeaderMenu({ onNewChat }: { onNewChat(): void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        testID="chat-header-menu-trigger"
+        style={workspaceHeaderMenuButtonStyle}
+        nativeID="paseo-product-actions"
+        accessibilityRole="button"
+        accessibilityLabel="Chat actions"
+      >
+        <WorkspaceHeaderMenuTriggerIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" width={220} testID="chat-header-menu">
+        <DropdownMenuItem
+          testID="chat-header-new-chat"
+          leading={MENU_NEW_AGENT_ICON}
+          onSelect={onNewChat}
+        >
+          New chat
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -240,7 +276,7 @@ export function WorkspaceHeaderMenuMobile({
       <DropdownMenuTrigger
         testID="workspace-header-menu-trigger"
         style={workspaceHeaderMenuButtonStyle}
-        hitSlop={COMPACT_HEADER_BUTTON_HIT_SLOP}
+        nativeID="paseo-product-actions"
         accessibilityRole="button"
         accessibilityLabel={t("workspace.header.actions.workspaceActions")}
       >
@@ -300,6 +336,10 @@ export function WorkspaceHeaderMenuMobile({
 }
 
 const styles = StyleSheet.create({
+  touchTarget: {
+    width: 44,
+    height: 44,
+  },
   headerMenuProfileIconWrapper: {
     width: 16,
     height: 16,

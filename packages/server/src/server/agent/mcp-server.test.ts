@@ -2937,13 +2937,23 @@ describe("create_agent MCP tool", () => {
       createdAt: "2026-07-17T00:00:00.000Z",
       updatedAt: "2026-07-17T00:00:00.000Z",
     });
+    const hiddenChatWorkspace = createPersistedWorkspaceRecord({
+      workspaceId: "ws-hidden-chat",
+      projectId: "project-hidden-chat",
+      internalPurpose: "chat",
+      cwd: "/tmp/paseo/runtime/chat-workspace",
+      kind: "directory",
+      displayName: "Chat",
+      createdAt: "2026-07-17T00:00:00.000Z",
+      updatedAt: "2026-07-17T00:00:00.000Z",
+    });
     const server = await createAgentMcpServer({
       agentManager,
       agentStorage,
       providerSnapshotManager: createOpenCodeManager().manager,
       workspaceRegistry: {
         get: vi.fn(async () => workspace),
-        list: vi.fn(async () => [workspace]),
+        list: vi.fn(async () => [workspace, hiddenChatWorkspace]),
         upsert: vi.fn(async () => undefined),
       },
       logger,
@@ -5170,12 +5180,33 @@ describe("agent snapshot MCP serialization", () => {
         runtimeInfo: { provider: "codex", sessionId: "session-123", model: "gpt-5.4" },
         labels: { role: "researcher" },
       }),
+      createManagedAgent({
+        id: "agent-hidden-chat",
+        workspaceId: "ws-hidden-chat",
+        provider: "codex",
+        cwd: "/tmp/paseo/runtime/chat-workspace",
+      }),
     ]);
+    const hiddenChatWorkspace = createPersistedWorkspaceRecord({
+      workspaceId: "ws-hidden-chat",
+      projectId: "project-hidden-chat",
+      internalPurpose: "chat",
+      cwd: "/tmp/paseo/runtime/chat-workspace",
+      kind: "directory",
+      displayName: "Chat",
+      createdAt: "2026-09-02T00:00:00.000Z",
+      updatedAt: "2026-09-02T00:00:00.000Z",
+    });
 
     const server = await createAgentMcpServer({
       agentManager,
       agentStorage,
       providerSnapshotManager: createOpenCodeManager().manager,
+      workspaceRegistry: {
+        get: vi.fn(async () => hiddenChatWorkspace),
+        list: vi.fn(async () => [hiddenChatWorkspace]),
+        upsert: vi.fn(async () => undefined),
+      },
       logger,
     });
     const tool = registeredTool(server, "list_agents");

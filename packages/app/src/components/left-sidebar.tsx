@@ -67,6 +67,7 @@ import {
   buildOpenProjectRoute,
   buildNewWorkspaceRoute,
   buildSchedulesRoute,
+  parseHostChatRouteFromPathname,
   buildSessionsRoute,
   buildSettingsAddHostRoute,
   buildSettingsRoute,
@@ -77,6 +78,8 @@ import { SidebarAgentListSkeleton } from "./sidebar-agent-list-skeleton";
 import { SidebarCalloutSlot } from "./sidebar-callout-slot";
 import { SidebarWorkspaceList } from "./sidebar-workspace-list";
 import { PluginSidebarItems } from "@/plugins";
+import { ChatHistoryList } from "@/chat-runtime/chat-history-list";
+import { navigateToChatDraft } from "@/chat-runtime/navigation";
 
 type SidebarTheme = ReturnType<typeof useUnistyles>["theme"];
 
@@ -549,6 +552,7 @@ function SidebarFooter({
   labels,
   handleAddHost,
   handleOpenHostSettings,
+  showAddProject = true,
 }: {
   theme: SidebarTheme;
   handleOpenProject: () => void;
@@ -563,18 +567,21 @@ function SidebarFooter({
   };
   handleAddHost: () => void;
   handleOpenHostSettings: (serverId: string) => void;
+  showAddProject?: boolean;
 }) {
   const newAgentKeys = useShortcutKeys("new-agent");
   const settingsKeys = useShortcutKeys("toggle-settings");
 
   return (
     <View style={styles.sidebarFooter}>
-      <FooterAddProjectButton
-        onPress={handleOpenProject}
-        label={labels.addProject}
-        shortcutKeys={newAgentKeys}
-        theme={theme}
-      />
+      {showAddProject ? (
+        <FooterAddProjectButton
+          onPress={handleOpenProject}
+          label={labels.addProject}
+          shortcutKeys={newAgentKeys}
+          theme={theme}
+        />
+      ) : null}
       <View style={styles.footerIconRow}>
         <SidebarHostPicker
           theme={theme}
@@ -634,6 +641,7 @@ function MobileSidebar({
   handleViewSchedulesNavigate,
 }: MobileSidebarProps) {
   const pathname = usePathname();
+  const chatRoute = parseHostChatRouteFromPathname(pathname);
   const hasActiveHostFilter = useSidebarViewStore((state) => state.hostFilters.length > 0);
   const isSessionsActive = pathname.includes("/sessions");
   const isSchedulesActive = pathname.includes("/schedules");
@@ -653,6 +661,11 @@ function MobileSidebar({
   const handleWorkspacePress = useCallback(() => {
     closeSidebar();
   }, [closeSidebar]);
+  const handleNewChat = useCallback(() => {
+    if (!chatRoute) return;
+    closeSidebar();
+    navigateToChatDraft(chatRoute.serverId);
+  }, [chatRoute, closeSidebar]);
 
   const mobileSidebarInsetStyle = useMemo(
     () => ({
@@ -662,6 +675,40 @@ function MobileSidebar({
     }),
     [insetsTop, insetsBottom, theme.colors.surfaceSidebar],
   );
+  let sidebarDirectoryContent = (
+    <SidebarWorkspaceList
+      collapsedProjectKeys={collapsedProjectKeys}
+      onToggleProjectCollapsed={toggleProjectCollapsed}
+      shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
+      groupMode={groupMode}
+      workspaceGroups={workspaceGroups}
+      projectIconTargets={projectIconTargets}
+      pinnedGroups={pinnedGroups}
+      projects={projects}
+      hasProjectsBeforeFilter={hasProjectsBeforeFilter}
+      hasActiveProjectFilter={hasActiveProjectFilter}
+      workspaceEntriesByKey={workspaceEntriesByKey}
+      isRefreshing={isManualRefresh && isRevalidating}
+      onRefresh={handleRefresh}
+      onWorkspacePress={handleWorkspacePress}
+      onAddProject={handleOpenProject}
+      parentGestureRef={closeGestureRef}
+      dragGestureHostPresented={dragGestureHostPresented}
+      listHeaderComponent={workspacesSectionHeaderElement}
+    />
+  );
+  if (isInitialLoad && !hasActiveHostFilter) {
+    sidebarDirectoryContent = <SidebarAgentListSkeleton />;
+  }
+  if (chatRoute) {
+    sidebarDirectoryContent = (
+      <ChatHistoryList
+        serverId={chatRoute.serverId}
+        selectedAgentId={chatRoute.agentId ?? undefined}
+        onSelect={closeSidebar}
+      />
+    );
+  }
 
   return (
     <MobilePanelOverlay
@@ -672,30 +719,43 @@ function MobileSidebar({
       <View style={styles.sidebarContent} pointerEvents="auto">
         <WindowChromeSafeArea placement="below" />
         <View style={styles.sidebarHeaderGroup}>
-          <SidebarNewWorkspaceHeaderRow
-            label={labels.newWorkspace}
-            testID="sidebar-global-new-workspace"
-            variant="compact"
-            shortcutKeys={newWorkspaceKeys}
-            onBeforeNavigate={closeSidebar}
-          />
-          <SidebarHeaderRow
-            icon={History}
-            label={labels.sessions}
-            onPress={handleViewMore}
-            isActive={isSessionsActive}
-            testID="sidebar-sessions"
-            variant="compact"
-          />
-          <SidebarHeaderRow
-            icon={CalendarClock}
-            label={labels.schedules}
-            onPress={handleViewSchedules}
-            isActive={isSchedulesActive}
-            testID="sidebar-schedules"
-            variant="compact"
-          />
-          <PluginSidebarItems onBeforeNavigate={closeSidebar} />
+          {chatRoute ? (
+            <SidebarHeaderRow
+              icon={Plus}
+              label="New chat"
+              onPress={handleNewChat}
+              isActive={chatRoute.agentId === null}
+              testID="sidebar-new-chat"
+              variant="compact"
+            />
+          ) : (
+            <>
+              <SidebarNewWorkspaceHeaderRow
+                label={labels.newWorkspace}
+                testID="sidebar-global-new-workspace"
+                variant="compact"
+                shortcutKeys={newWorkspaceKeys}
+                onBeforeNavigate={closeSidebar}
+              />
+              <SidebarHeaderRow
+                icon={History}
+                label={labels.sessions}
+                onPress={handleViewMore}
+                isActive={isSessionsActive}
+                testID="sidebar-sessions"
+                variant="compact"
+              />
+              <SidebarHeaderRow
+                icon={CalendarClock}
+                label={labels.schedules}
+                onPress={handleViewSchedules}
+                isActive={isSchedulesActive}
+                testID="sidebar-schedules"
+                variant="compact"
+              />
+              <PluginSidebarItems onBeforeNavigate={closeSidebar} />
+            </>
+          )}
         </View>
         <WindowChromeSafeArea placement="inline" style={styles.mobileCloseButtonRow}>
           <Pressable
@@ -717,30 +777,7 @@ function MobileSidebar({
           </Pressable>
         </WindowChromeSafeArea>
 
-        {isInitialLoad && !hasActiveHostFilter ? (
-          <SidebarAgentListSkeleton />
-        ) : (
-          <SidebarWorkspaceList
-            collapsedProjectKeys={collapsedProjectKeys}
-            onToggleProjectCollapsed={toggleProjectCollapsed}
-            shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
-            groupMode={groupMode}
-            workspaceGroups={workspaceGroups}
-            projectIconTargets={projectIconTargets}
-            pinnedGroups={pinnedGroups}
-            projects={projects}
-            hasProjectsBeforeFilter={hasProjectsBeforeFilter}
-            hasActiveProjectFilter={hasActiveProjectFilter}
-            workspaceEntriesByKey={workspaceEntriesByKey}
-            isRefreshing={isManualRefresh && isRevalidating}
-            onRefresh={handleRefresh}
-            onWorkspacePress={handleWorkspacePress}
-            onAddProject={handleOpenProject}
-            parentGestureRef={closeGestureRef}
-            dragGestureHostPresented={dragGestureHostPresented}
-            listHeaderComponent={workspacesSectionHeaderElement}
-          />
-        )}
+        {sidebarDirectoryContent}
 
         <SidebarFooter
           theme={theme}
@@ -750,6 +787,7 @@ function MobileSidebar({
           labels={labels}
           handleAddHost={handleAddHost}
           handleOpenHostSettings={handleOpenHostSettings}
+          showAddProject={!chatRoute}
         />
       </View>
     </MobilePanelOverlay>
@@ -787,9 +825,13 @@ function DesktopSidebar({
 }: DesktopSidebarProps) {
   const ownsTopLeft = useOwnsWindowChromeCorner("top-left");
   const pathname = usePathname();
+  const chatRoute = parseHostChatRouteFromPathname(pathname);
   const hasActiveHostFilter = useSidebarViewStore((state) => state.hostFilters.length > 0);
   const isSessionsActive = pathname.includes("/sessions");
   const isSchedulesActive = pathname.includes("/schedules");
+  const handleNewChat = useCallback(() => {
+    if (chatRoute) navigateToChatDraft(chatRoute.serverId);
+  }, [chatRoute]);
   const sidebarWidth = usePanelStore((state) => state.sidebarWidth);
   const setSidebarWidth = usePanelStore((state) => state.setSidebarWidth);
   const { width: viewportWidth } = useWindowDimensions();
@@ -868,6 +910,36 @@ function DesktopSidebar({
     () => [styles.sidebarHeaderGroup, ownsTopLeft && styles.sidebarHeaderGroupBelowChrome],
     [ownsTopLeft],
   );
+  let sidebarDirectoryContent = (
+    <SidebarWorkspaceList
+      collapsedProjectKeys={collapsedProjectKeys}
+      onToggleProjectCollapsed={toggleProjectCollapsed}
+      shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
+      groupMode={groupMode}
+      workspaceGroups={workspaceGroups}
+      projectIconTargets={projectIconTargets}
+      pinnedGroups={pinnedGroups}
+      projects={projects}
+      hasProjectsBeforeFilter={hasProjectsBeforeFilter}
+      hasActiveProjectFilter={hasActiveProjectFilter}
+      workspaceEntriesByKey={workspaceEntriesByKey}
+      isRefreshing={isManualRefresh && isRevalidating}
+      onRefresh={handleRefresh}
+      onAddProject={handleOpenProject}
+      listHeaderComponent={workspacesSectionHeaderElement}
+    />
+  );
+  if (isInitialLoad && !hasActiveHostFilter) {
+    sidebarDirectoryContent = <SidebarAgentListSkeleton />;
+  }
+  if (chatRoute) {
+    sidebarDirectoryContent = (
+      <ChatHistoryList
+        serverId={chatRoute.serverId}
+        selectedAgentId={chatRoute.agentId ?? undefined}
+      />
+    );
+  }
   return (
     <Animated.View
       accessibilityElementsHidden={!active}
@@ -898,53 +970,46 @@ function DesktopSidebar({
             <TitlebarDragRegion />
           )}
           <View style={sidebarHeaderGroupStyle}>
-            <SidebarNewWorkspaceHeaderRow
-              label={labels.newWorkspace}
-              testID="sidebar-global-new-workspace"
-              variant="compact"
-              shortcutKeys={newWorkspaceKeys}
-            />
-            <SidebarHeaderRow
-              icon={History}
-              label={labels.sessions}
-              onPress={handleViewMore}
-              isActive={isSessionsActive}
-              testID="sidebar-sessions"
-              variant="compact"
-            />
-            <SidebarHeaderRow
-              icon={CalendarClock}
-              label={labels.schedules}
-              onPress={handleViewSchedules}
-              isActive={isSchedulesActive}
-              testID="sidebar-schedules"
-              variant="compact"
-            />
-            <PluginSidebarItems />
+            {chatRoute ? (
+              <SidebarHeaderRow
+                icon={Plus}
+                label="New chat"
+                onPress={handleNewChat}
+                isActive={chatRoute.agentId === null}
+                testID="sidebar-new-chat"
+                variant="compact"
+              />
+            ) : (
+              <>
+                <SidebarNewWorkspaceHeaderRow
+                  label={labels.newWorkspace}
+                  testID="sidebar-global-new-workspace"
+                  variant="compact"
+                  shortcutKeys={newWorkspaceKeys}
+                />
+                <SidebarHeaderRow
+                  icon={History}
+                  label={labels.sessions}
+                  onPress={handleViewMore}
+                  isActive={isSessionsActive}
+                  testID="sidebar-sessions"
+                  variant="compact"
+                />
+                <SidebarHeaderRow
+                  icon={CalendarClock}
+                  label={labels.schedules}
+                  onPress={handleViewSchedules}
+                  isActive={isSchedulesActive}
+                  testID="sidebar-schedules"
+                  variant="compact"
+                />
+                <PluginSidebarItems />
+              </>
+            )}
           </View>
         </View>
 
-        {isInitialLoad && !hasActiveHostFilter ? (
-          <SidebarAgentListSkeleton />
-        ) : (
-          <SidebarWorkspaceList
-            collapsedProjectKeys={collapsedProjectKeys}
-            onToggleProjectCollapsed={toggleProjectCollapsed}
-            shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
-            groupMode={groupMode}
-            workspaceGroups={workspaceGroups}
-            projectIconTargets={projectIconTargets}
-            pinnedGroups={pinnedGroups}
-            projects={projects}
-            hasProjectsBeforeFilter={hasProjectsBeforeFilter}
-            hasActiveProjectFilter={hasActiveProjectFilter}
-            workspaceEntriesByKey={workspaceEntriesByKey}
-            isRefreshing={isManualRefresh && isRevalidating}
-            onRefresh={handleRefresh}
-            onAddProject={handleOpenProject}
-            listHeaderComponent={workspacesSectionHeaderElement}
-          />
-        )}
+        {sidebarDirectoryContent}
 
         <SidebarCalloutSlot />
 
@@ -956,6 +1021,7 @@ function DesktopSidebar({
           labels={labels}
           handleAddHost={handleAddHost}
           handleOpenHostSettings={handleOpenHostSettings}
+          showAddProject={!chatRoute}
         />
 
         <SidebarResizeHandle

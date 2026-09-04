@@ -620,6 +620,48 @@ describe("WorkspaceDirectory empty projects", () => {
     ]);
   });
 
+  test("hides daemon-owned Chat records from workspace and empty-project projections", async () => {
+    const directory = makeDirectory({
+      projects: [
+        project({ projectId: "visible" }),
+        project({ projectId: "visible-empty" }),
+        project({ projectId: "hidden-chat", internalPurpose: "chat" }),
+        project({ projectId: "hidden-chat-empty", internalPurpose: "chat" }),
+      ],
+      workspaces: [
+        {
+          workspaceId: "visible-workspace",
+          projectId: "visible",
+          cwd: "/workspace/visible",
+          kind: "directory",
+          displayName: "visible",
+          createdAt: NOW,
+          updatedAt: NOW,
+          archivedAt: null,
+        },
+        {
+          workspaceId: "hidden-chat-workspace",
+          projectId: "hidden-chat",
+          internalPurpose: "chat",
+          cwd: "/runtime/chat-workspace",
+          kind: "directory",
+          displayName: "Chat",
+          createdAt: NOW,
+          updatedAt: NOW,
+          archivedAt: null,
+        },
+      ],
+    });
+
+    const result = await directory.listFetchEntries({
+      type: "fetch_workspaces_request",
+      requestId: "hidden-chat-projection",
+    });
+
+    expect(result.entries.map((entry) => entry.id)).toEqual(["visible-workspace"]);
+    expect(result.emptyProjects.map((entry) => entry.projectId)).toEqual(["visible-empty"]);
+  });
+
   test("excludes projects that still have an active workspace", async () => {
     const directory = makeDirectory({
       projects: [project({ projectId: "with-ws" }), project({ projectId: "empty" })],

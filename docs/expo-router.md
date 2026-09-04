@@ -13,11 +13,11 @@ Each layout owns only the routes directly inside its directory.
 
 - The root layout registers `h/[serverId]`.
 - The root layout does not register host leaf routes such as
-  `h/[serverId]/workspace/[workspaceId]`, `h/[serverId]/open-project`, or
-  `h/[serverId]/index`.
+  `h/[serverId]/workspace/[workspaceId]`, `h/[serverId]/chat`,
+  `h/[serverId]/open-project`, or `h/[serverId]/index`.
 - `packages/app/src/app/h/[serverId]/_layout.tsx` owns the host leaves with
-  relative screen names: `index`, `workspace/[workspaceId]/index`,
-  `agent/[agentId]`, `sessions`, `open-project`, `settings`,
+  relative screen names: `index`, `workspace/[workspaceId]/index`, `chat/index`,
+  `chat/[agentId]`, `agent/[agentId]`, `sessions`, `open-project`, `settings`,
   `plugin/[pluginId]/[surfaceId]`, and
   `plugin/[pluginId]/[contributionKind]/[contributionId]`.
 
@@ -46,6 +46,11 @@ state.
 
 This split is deliberate. The host layout must mount first so native local
 dynamic params exist before any nested workspace leaf is selected.
+
+Chat is a separate Host leaf: `/h/[serverId]/chat` owns the stable new-conversation draft and
+`/h/[serverId]/chat/[agentId]` owns one Chat conversation. Neither route contains or updates the
+last Build workspace selection. The screen resolves its daemon-owned workspace only after the
+`chatWorkspace` capability gate; that internal ID never becomes URL identity.
 
 ## App-Wide Route Hops
 

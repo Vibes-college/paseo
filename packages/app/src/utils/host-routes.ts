@@ -287,6 +287,19 @@ export function parseHostAgentRouteFromPathname(
   return { serverId, agentId };
 }
 
+export function parseHostChatRouteFromPathname(
+  pathname: string,
+): { serverId: string; agentId: string | null } | null {
+  const pathOnly = stripSearchAndHash(pathname);
+  const match = pathOnly.match(/^\/h\/([^/]+)\/chat(?:\/([^/]+))?\/?$/);
+  if (!match) return null;
+  const serverId = trimNonEmpty(decodeSegment(match[1]));
+  if (!serverId) return null;
+  const agentId = match[2] ? trimNonEmpty(decodeSegment(match[2])) : null;
+  if (match[2] && !agentId) return null;
+  return { serverId, agentId };
+}
+
 export function parseHostWorkspaceRouteFromPathname(
   pathname: string,
 ): { serverId: string; workspaceId: string } | null {
@@ -402,6 +415,23 @@ export function buildHostRootRoute(serverId: string) {
     return "/" as const;
   }
   return `/h/${encodeSegment(normalized)}` as const;
+}
+
+export function buildHostChatRoute(serverId: string) {
+  const base = buildHostRootRoute(serverId);
+  if (base === "/") {
+    return "/" as const;
+  }
+  return `${base}/chat` as const;
+}
+
+export function buildHostChatAgentRoute(serverId: string, agentId: string) {
+  const base = buildHostChatRoute(serverId);
+  const normalizedAgentId = trimNonEmpty(agentId);
+  if (base === "/" || !normalizedAgentId) {
+    return "/" as const;
+  }
+  return `${base}/${encodeSegment(normalizedAgentId)}` as const;
 }
 
 export function buildHostOpenProjectRoute(serverId: string) {

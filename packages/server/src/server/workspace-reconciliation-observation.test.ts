@@ -35,6 +35,7 @@ interface ProjectSpec {
   root: string;
   workspaces?: Array<{ id: string; cwd: string }>;
   archived?: boolean;
+  internalPurpose?: "chat";
 }
 
 interface Gate {
@@ -334,6 +335,7 @@ class ObservedPlacements {
     await this.projects.upsert(
       createPersistedProjectRecord({
         projectId: spec.id,
+        ...(spec.internalPurpose ? { internalPurpose: spec.internalPurpose } : {}),
         rootPath,
         kind: "non_git",
         displayName: spec.id,
@@ -349,6 +351,7 @@ class ObservedPlacements {
         createPersistedWorkspaceRecord({
           workspaceId: workspace.id,
           projectId: spec.id,
+          ...(spec.internalPurpose ? { internalPurpose: spec.internalPurpose } : {}),
           cwd,
           kind: "directory",
           displayName: `Durable ${workspace.id}`,
@@ -406,6 +409,24 @@ describe("observed workspace placement", () => {
       "project published:upsert:project-new",
       "registry mutation resolved:project-new",
     ]);
+    expect(observed.gitReads).toBe(0);
+    observed.dispose();
+  });
+
+  test("does not observe or publish daemon-owned Chat records", async () => {
+    const observed = new ObservedPlacements([]);
+    await observed.start();
+
+    await observed.add({
+      id: "project-hidden-chat",
+      root: "runtime/chat-workspace",
+      internalPurpose: "chat",
+      workspaces: [{ id: "workspace-hidden-chat", cwd: "runtime/chat-workspace" }],
+    });
+    await observed.advanceBy(DEBOUNCE_MS);
+
+    expect(observed.watchedRoots()).toEqual([]);
+    expect(observed.projectUpdates).toEqual([]);
     expect(observed.gitReads).toBe(0);
     observed.dispose();
   });

@@ -10,7 +10,7 @@ import type { StoredAgentRecord } from "../../agent/agent-storage.js";
 import { resolveEffectiveThinkingOptionId, toAgentPayload } from "../../agent/agent-projections.js";
 
 type AgentUpdatePayload = Extract<SessionOutboundMessage, { type: "agent_update" }>["payload"];
-type AgentUpdatesFilter = NonNullable<
+export type AgentUpdatesFilter = NonNullable<
   Extract<SessionInboundMessage, { type: "fetch_agents_request" }>["filter"]
 >;
 
@@ -61,6 +61,10 @@ export interface AgentUpdatesServiceDeps {
   buildStoredAgentPayload(record: StoredAgentRecord): AgentSnapshotPayload;
   isProviderVisibleToClient(provider: string): boolean;
   buildProjectPlacementForWorkspaceId(workspaceId: string): Promise<ProjectPlacementPayload | null>;
+  isWorkspaceHiddenFromAgentDirectory?(
+    workspaceId: string,
+    filter: AgentUpdatesFilter | undefined,
+  ): Promise<boolean>;
   emitWorkspaceUpdateForWorkspaceId(workspaceId: string): Promise<void>;
   sequenceAgentUpdate<T extends AgentUpdatePayload>(
     payload: T,
@@ -96,6 +100,13 @@ function matchesAgentStructuralFilter(
   project: ProjectPlacementPayload,
   filter: AgentUpdatesFilter,
 ): boolean {
+  if (filter.workspaceIds && filter.workspaceIds.length > 0) {
+    const workspaceIds = new Set(filter.workspaceIds);
+    if (!agent.workspaceId || !workspaceIds.has(agent.workspaceId)) {
+      return false;
+    }
+  }
+
   if (filter.statuses && filter.statuses.length > 0) {
     const statuses = new Set(filter.statuses);
     if (!statuses.has(agent.status)) {
@@ -170,6 +181,14 @@ export function createAgentUpdatesService(deps: AgentUpdatesServiceDeps): AgentU
     project: ProjectPlacementPayload | null,
     agentId: string,
   ) => deps.sequenceAgentUpdate(payload, agent, project, agentId, sub.syncEnabled === true);
+
+  async function isHiddenFromSubscription(
+    workspaceId: string | undefined,
+    sub: AgentUpdatesSubscriptionState,
+  ): Promise<boolean> {
+    if (!workspaceId || !deps.isWorkspaceHiddenFromAgentDirectory) return false;
+    return deps.isWorkspaceHiddenFromAgentDirectory(workspaceId, sub.filter);
+  }
 
   function bufferOrEmit(sub: AgentUpdatesSubscriptionState, payload: AgentUpdatePayload): void {
     if (payload.kind === "upsert" && !deps.isProviderVisibleToClient(payload.agent.provider)) {
@@ -249,6 +268,9 @@ export function createAgentUpdatesService(deps: AgentUpdatesServiceDeps): AgentU
     if (!sub) {
       return payload;
     }
+    if (await isHiddenFromSubscription(payload.workspaceId, sub)) {
+      return payload;
+    }
 
     const project = payload.workspaceId
       ? await deps.buildProjectPlacementForWorkspaceId(payload.workspaceId)
@@ -292,6 +314,9 @@ export function createAgentUpdatesService(deps: AgentUpdatesServiceDeps): AgentU
     try {
       const sub = subscription;
       payload = await deps.enrichAgentPayload(payload);
+      if (sub && (await isHiddenFromSubscription(payload.workspaceId, sub))) {
+        return;
+      }
       if (sub) {
         const project = payload.workspaceId
           ? await deps.buildProjectPlacementForWorkspaceId(payload.workspaceId)

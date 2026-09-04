@@ -71,10 +71,11 @@ import {
 } from "../lifecycle-command.js";
 import type { ForgeService } from "../../../services/forge-service.js";
 import type { WorkspaceGitService } from "../../workspace-git-service.js";
-import type {
-  PersistedWorkspaceRecord,
-  ProjectRegistry,
-  WorkspaceRegistry,
+import {
+  isUserVisibleWorkspaceRecord,
+  type PersistedWorkspaceRecord,
+  type ProjectRegistry,
+  type WorkspaceRegistry,
 } from "../../workspace-registry.js";
 import { resolveWorktreeSourceCwd } from "../../workspace-source.js";
 import type { WorkspaceScriptsService } from "../../session/workspace-scripts/workspace-scripts-service.js";
@@ -1345,7 +1346,7 @@ export function createPaseoToolCatalog(options: PaseoToolHostDependencies): Pase
         throw new Error("Workspace registry is not configured");
       }
       const workspaces = (await options.workspaceRegistry.list())
-        .filter((workspace) => !workspace.archivedAt)
+        .filter((workspace) => !workspace.archivedAt && isUserVisibleWorkspaceRecord(workspace))
         .map(toWorkspaceAutomationSummary);
       return {
         content: [],
@@ -2026,6 +2027,13 @@ export function createPaseoToolCatalog(options: PaseoToolHostDependencies): Pase
       const requestedCwd = cwd?.trim() ? expandUserPath(cwd) : callerCwd;
       const statusFilter = statuses && statuses.length > 0 ? new Set(statuses) : null;
       const sinceMs = Date.now() - sinceHours * 60 * 60 * 1000;
+      const hiddenWorkspaceIds = new Set(
+        options.workspaceRegistry
+          ? (await options.workspaceRegistry.list())
+              .filter((workspace) => !isUserVisibleWorkspaceRecord(workspace))
+              .map((workspace) => workspace.workspaceId)
+          : [],
+      );
       const liveSnapshots = agentManager.listAgents();
       const liveAgents = await Promise.all(
         liveSnapshots.map((snapshot) =>
@@ -2044,6 +2052,7 @@ export function createPaseoToolCatalog(options: PaseoToolHostDependencies): Pase
         )
         .map((record) => buildStoredAgentPayload(record, registeredProviderIds));
       const agents = [...liveAgents, ...storedAgents]
+        .filter((agent) => !agent.workspaceId || !hiddenWorkspaceIds.has(agent.workspaceId))
         .map(toAgentListItemPayload)
         .filter((agent) => !requestedCwd || isSameOrDescendantPath(requestedCwd, agent.cwd))
         .filter((agent) => !statusFilter || statusFilter.has(agent.status))

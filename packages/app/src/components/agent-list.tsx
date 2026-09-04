@@ -33,6 +33,7 @@ interface AgentListProps {
   onRefresh?: () => void;
   selectedAgentId?: string;
   onAgentSelect?: () => void;
+  onAgentPress?: (agent: AggregatedAgent) => void;
   listFooterComponent?: ReactElement | null;
   showAttentionIndicator?: boolean;
   showHostColumn?: boolean;
@@ -205,6 +206,119 @@ function SessionRowTrailingAttention({
   );
 }
 
+interface SessionRowMetadataProps {
+  agent: AggregatedAgent;
+  projectName: string;
+  branch: string;
+  workspaceName: string;
+  timeAgo: string;
+  showCheckoutInfo: boolean;
+  showHostColumn: boolean;
+  rangesFor: (field: AgentSearchMatch["field"]) => readonly MatchRange[] | undefined;
+}
+
+function SessionRowMobileMetadata({
+  agent,
+  projectName,
+  branch,
+  workspaceName,
+  timeAgo,
+  showCheckoutInfo,
+  showHostColumn,
+  rangesFor,
+}: SessionRowMetadataProps) {
+  return (
+    <View style={styles.rowMetaRow}>
+      {showCheckoutInfo ? (
+        <>
+          <HighlightedText
+            text={projectName}
+            ranges={rangesFor("project")}
+            style={styles.sessionMetaText}
+            numberOfLines={1}
+            testID={`agent-row-project-${agent.serverId}-${agent.id}`}
+          />
+          <Text style={styles.sessionMetaSeparator}>·</Text>
+          <HighlightedText
+            text={branch}
+            ranges={rangesFor("branch")}
+            style={styles.sessionMetaText}
+            numberOfLines={1}
+            testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
+          />
+          <Text style={styles.sessionMetaSeparator}>·</Text>
+          <HighlightedText
+            text={workspaceName}
+            ranges={rangesFor("workspace")}
+            style={styles.sessionMetaText}
+            numberOfLines={1}
+            testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
+          />
+          <Text style={styles.sessionMetaSeparator}>·</Text>
+        </>
+      ) : null}
+      <Text style={styles.sessionMetaText}>{timeAgo}</Text>
+      {showHostColumn && agent.serverLabel ? (
+        <>
+          <Text style={styles.sessionMetaSeparator}>·</Text>
+          <Text style={styles.sessionMetaText} numberOfLines={1}>
+            {agent.serverLabel}
+          </Text>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+function SessionRowDesktopMetadata({
+  agent,
+  projectName,
+  branch,
+  timeAgo,
+  showCheckoutInfo,
+  showHostColumn,
+  rangesFor,
+}: SessionRowMetadataProps) {
+  return (
+    <View style={styles.rowColumns}>
+      {showCheckoutInfo ? (
+        <HighlightedText
+          text={projectName}
+          ranges={rangesFor("project")}
+          style={styles.columnMeta}
+          numberOfLines={1}
+          testID={`agent-row-project-${agent.serverId}-${agent.id}`}
+        />
+      ) : null}
+      {showHostColumn ? (
+        <Text style={styles.columnMetaHost} numberOfLines={1}>
+          {agent.serverLabel}
+        </Text>
+      ) : null}
+      {showCheckoutInfo ? (
+        <HighlightedText
+          text={branch}
+          ranges={rangesFor("branch")}
+          style={styles.columnMeta}
+          numberOfLines={1}
+          testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
+        />
+      ) : null}
+      <Text style={styles.columnMetaFixed} numberOfLines={1}>
+        {timeAgo}
+      </Text>
+    </View>
+  );
+}
+
+function shouldShowWorkspaceTitle(input: {
+  isMobile: boolean;
+  showCheckoutInfo: boolean;
+  workspaceName: string;
+}): boolean {
+  return input.showCheckoutInfo && !input.isMobile && input.workspaceName.length > 0;
+}
+
 function SessionRow({
   agent,
   searchMatches,
@@ -212,6 +326,7 @@ function SessionRow({
   selectedAgentId,
   showAttentionIndicator,
   showHostColumn,
+  showCheckoutInfo,
   onPress,
   onLongPress,
 }: {
@@ -221,6 +336,7 @@ function SessionRow({
   selectedAgentId?: string;
   showAttentionIndicator: boolean;
   showHostColumn: boolean;
+  showCheckoutInfo: boolean;
   onPress: (agent: AggregatedAgent) => void;
   onLongPress: (agent: AggregatedAgent) => void;
 }) {
@@ -232,6 +348,11 @@ function SessionRow({
   const projectName = agent.projectPlacement?.projectName ?? "";
   const branch = agent.projectPlacement?.checkout.currentBranch ?? "";
   const workspaceName = agent.projectPlacement?.workspaceName ?? "";
+  const workspaceTitleVisible = shouldShowWorkspaceTitle({
+    isMobile,
+    showCheckoutInfo,
+    workspaceName,
+  });
   const ProviderIcon = getProviderIcon(agent.provider);
   const pendingPermissionCount = agent.pendingPermissionCount ?? 0;
   const rangesFor = useCallback(
@@ -275,7 +396,7 @@ function SessionRow({
       <View style={styles.rowContent}>
         <View style={styles.rowTitleRow}>
           <WorkspaceTitlePrefix
-            visible={!isMobile && Boolean(workspaceName)}
+            visible={workspaceTitleVisible}
             workspaceName={workspaceName}
             ranges={rangesFor("workspace")}
             testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
@@ -299,68 +420,29 @@ function SessionRow({
           />
         </View>
         {isMobile ? (
-          <View style={styles.rowMetaRow}>
-            <HighlightedText
-              text={projectName}
-              ranges={rangesFor("project")}
-              style={styles.sessionMetaText}
-              numberOfLines={1}
-              testID={`agent-row-project-${agent.serverId}-${agent.id}`}
-            />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
-            <HighlightedText
-              text={branch}
-              ranges={rangesFor("branch")}
-              style={styles.sessionMetaText}
-              numberOfLines={1}
-              testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
-            />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
-            <HighlightedText
-              text={workspaceName}
-              ranges={rangesFor("workspace")}
-              style={styles.sessionMetaText}
-              numberOfLines={1}
-              testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
-            />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
-            <Text style={styles.sessionMetaText}>{timeAgo}</Text>
-            {showHostColumn && agent.serverLabel ? (
-              <>
-                <Text style={styles.sessionMetaSeparator}>·</Text>
-                <Text style={styles.sessionMetaText} numberOfLines={1}>
-                  {agent.serverLabel}
-                </Text>
-              </>
-            ) : null}
-          </View>
+          <SessionRowMobileMetadata
+            agent={agent}
+            projectName={projectName}
+            branch={branch}
+            workspaceName={workspaceName}
+            timeAgo={timeAgo}
+            showCheckoutInfo={showCheckoutInfo}
+            showHostColumn={showHostColumn}
+            rangesFor={rangesFor}
+          />
         ) : null}
       </View>
       {!isMobile ? (
-        <View style={styles.rowColumns}>
-          <HighlightedText
-            text={projectName}
-            ranges={rangesFor("project")}
-            style={styles.columnMeta}
-            numberOfLines={1}
-            testID={`agent-row-project-${agent.serverId}-${agent.id}`}
-          />
-          {showHostColumn ? (
-            <Text style={styles.columnMetaHost} numberOfLines={1}>
-              {agent.serverLabel}
-            </Text>
-          ) : null}
-          <HighlightedText
-            text={branch}
-            ranges={rangesFor("branch")}
-            style={styles.columnMeta}
-            numberOfLines={1}
-            testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
-          />
-          <Text style={styles.columnMetaFixed} numberOfLines={1}>
-            {timeAgo}
-          </Text>
-        </View>
+        <SessionRowDesktopMetadata
+          agent={agent}
+          projectName={projectName}
+          branch={branch}
+          workspaceName={workspaceName}
+          timeAgo={timeAgo}
+          showCheckoutInfo={showCheckoutInfo}
+          showHostColumn={showHostColumn}
+          rangesFor={rangesFor}
+        />
       ) : null}
       <SessionRowTrailingAttention
         isMobile={isMobile}
@@ -377,9 +459,11 @@ export function AgentList({
   onRefresh,
   selectedAgentId,
   onAgentSelect,
+  onAgentPress,
   listFooterComponent,
   showAttentionIndicator = true,
   showHostColumn = false,
+  showCheckoutInfo = true,
   searchMatchesByAgentKey,
   flat = false,
 }: AgentListProps) {
@@ -407,6 +491,10 @@ export function AgentList({
       const agentId = agent.id;
 
       onAgentSelect?.();
+      if (onAgentPress) {
+        onAgentPress(agent);
+        return;
+      }
       navigateToAgent({
         serverId,
         agentId,
@@ -414,7 +502,7 @@ export function AgentList({
         pin: true,
       });
     },
-    [isActionSheetVisible, onAgentSelect],
+    [isActionSheetVisible, onAgentPress, onAgentSelect],
   );
 
   const handleAgentLongPress = useCallback(
@@ -496,6 +584,7 @@ export function AgentList({
           selectedAgentId={selectedAgentId}
           showAttentionIndicator={showAttentionIndicator}
           showHostColumn={showHostColumn}
+          showCheckoutInfo={showCheckoutInfo}
           onPress={handleAgentPress}
           onLongPress={handleAgentLongPress}
         />
@@ -509,6 +598,7 @@ export function AgentList({
       selectedAgentId,
       showAttentionIndicator,
       showHostColumn,
+      showCheckoutInfo,
       t,
     ],
   );

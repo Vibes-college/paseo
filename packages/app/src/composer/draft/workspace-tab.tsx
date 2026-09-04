@@ -29,6 +29,7 @@ import { encodeImages } from "@/utils/encode-images";
 import type { WorkspaceFileOpenRequest } from "@/workspace/file-open";
 import { shouldAutoFocusWorkspaceDraftComposer } from "@/screens/workspace/workspace-draft-pane-focus";
 import {
+  resolveDraftWorkspaceBinding,
   shouldAllowEmptyDraftText,
   validateDraftSubmission,
 } from "@/composer/draft/workspace-tab-core";
@@ -289,6 +290,25 @@ function buildDraftInitialValues(input: {
   };
 }
 
+function resolveWorkspaceBindingForDraft(input: {
+  workspaceId: string;
+  workspaceFields: { id: string; workspaceDirectory: string } | null | undefined;
+  workspaceDirectoryOverride: string | undefined;
+}) {
+  const explicitWorkspaceDirectory = input.workspaceDirectoryOverride?.trim() ?? "";
+  return resolveDraftWorkspaceBinding({
+    registered: input.workspaceFields
+      ? {
+          workspaceId: input.workspaceFields.id,
+          workspaceDirectory: input.workspaceFields.workspaceDirectory,
+        }
+      : null,
+    explicit: explicitWorkspaceDirectory
+      ? { workspaceId: input.workspaceId, workspaceDirectory: explicitWorkspaceDirectory }
+      : null,
+  });
+}
+
 function resolveDraftWorkingDirectory(input: {
   workspaceDirectory: string | null;
   initialSetup: WorkspaceDraftTabSetup | null;
@@ -312,6 +332,7 @@ interface WorkspaceDraftAgentTabProps {
   tabId: string;
   draftId: string;
   initialSetup?: WorkspaceDraftTabSetup;
+  workspaceDirectoryOverride?: string;
   isPaneFocused: boolean;
   onCreated: (snapshot: AgentSnapshotPayload) => void;
   onOpenWorkspaceFile: (request: WorkspaceFileOpenRequest) => void;
@@ -334,6 +355,7 @@ export function WorkspaceDraftAgentTab({
   tabId,
   draftId,
   initialSetup = undefined,
+  workspaceDirectoryOverride,
   isPaneFocused,
   onCreated,
   onOpenWorkspaceFile,
@@ -347,7 +369,12 @@ export function WorkspaceDraftAgentTab({
     workspaceDirectory: w.workspaceDirectory,
     id: w.id,
   }));
-  const workspaceDirectory = workspaceFields?.workspaceDirectory || null;
+  const workspaceBinding = resolveWorkspaceBindingForDraft({
+    workspaceId,
+    workspaceFields,
+    workspaceDirectoryOverride,
+  });
+  const workspaceDirectory = workspaceBinding?.workspaceDirectory ?? null;
   const draftSetup = initialSetup ?? null;
   const draftWorkingDirectory = resolveDraftWorkingDirectory({
     workspaceDirectory,
@@ -517,7 +544,7 @@ export function WorkspaceDraftAgentTab({
         cwd,
         client,
         workspaceDirectory: draftWorkingDirectory,
-        workspaceId: workspaceFields?.id ?? null,
+        workspaceId: workspaceBinding?.workspaceId ?? null,
         autoSubmitConfig,
         composerState,
         hostDisconnectedMessage: t("workspace.terminal.hostDisconnected"),

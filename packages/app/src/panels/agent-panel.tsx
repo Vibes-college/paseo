@@ -297,6 +297,7 @@ type FetchAgentResult = Awaited<ReturnType<DaemonClient["fetchAgent"]>>;
 function storeFetchedAgentDetail(input: {
   serverId: string;
   result: NonNullable<FetchAgentResult>;
+  directoryScope: "build" | "chat";
 }): Agent {
   const normalized = normalizeAgentSnapshot(input.result.agent, input.serverId);
   const hydrated: Agent = applyLegacyDaemonWorkspaceOwnership({
@@ -308,7 +309,7 @@ function storeFetchedAgentDetail(input: {
   });
   const store = useSessionStore.getState();
 
-  if (shouldStoreFetchedAgentInActiveDirectory(hydrated)) {
+  if (input.directoryScope === "build" && shouldStoreFetchedAgentInActiveDirectory(hydrated)) {
     store.setAgents(input.serverId, (previous) => {
       const next = new Map(previous);
       next.set(hydrated.id, hydrated);
@@ -520,18 +521,20 @@ type AgentLookupState =
   | { tag: "not_found"; message: string }
   | { tag: "error"; message: string };
 
-function AgentPanelContent({
+export function AgentPanelContent({
   serverId,
   workspaceId,
   agentId,
   isPaneFocused,
   onOpenWorkspaceFile,
+  directoryScope = "build",
 }: {
   serverId: string;
   workspaceId: string;
   agentId: string;
   isPaneFocused: boolean;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  directoryScope?: "build" | "chat";
 }) {
   const { t } = useTranslation();
   const resolvedAgentId = agentId.trim() || undefined;
@@ -585,6 +588,7 @@ function AgentPanelContent({
       isConnected={runtimeIsConnected}
       connectionStatus={connectionStatus}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      directoryScope={directoryScope}
     />
   );
 }
@@ -598,6 +602,7 @@ function AgentPanelBody({
   isConnected,
   connectionStatus,
   onOpenWorkspaceFile,
+  directoryScope,
 }: {
   serverId: string;
   workspaceId: string;
@@ -607,6 +612,7 @@ function AgentPanelBody({
   isConnected: boolean;
   connectionStatus: HostRuntimeConnectionStatus;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  directoryScope: "build" | "chat";
 }) {
   const { t } = useTranslation();
   const { isArchivingAgent: _isArchivingAgent } = useArchiveAgent();
@@ -680,7 +686,7 @@ function AgentPanelBody({
           return;
         }
 
-        storeFetchedAgentDetail({ serverId, result });
+        storeFetchedAgentDetail({ serverId, result, directoryScope });
         if (workspaceKey) {
           resolvePendingAgent(workspaceKey, agentId);
         }
@@ -705,6 +711,7 @@ function AgentPanelBody({
     agentId,
     agentState.id,
     client,
+    directoryScope,
     hasSession,
     isConnected,
     lookupState.tag,
@@ -767,6 +774,7 @@ function AgentPanelBody({
       isConnected={isConnected}
       connectionStatus={connectionStatus}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      directoryScope={directoryScope}
     />
   );
 }
@@ -780,6 +788,7 @@ function ChatAgentContent({
   isConnected,
   connectionStatus,
   onOpenWorkspaceFile,
+  directoryScope,
 }: {
   serverId: string;
   workspaceId: string;
@@ -789,6 +798,7 @@ function ChatAgentContent({
   isConnected: boolean;
   connectionStatus: HostRuntimeConnectionStatus;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  directoryScope: "build" | "chat";
 }) {
   const { t } = useTranslation();
   const isPaneVisible = useRetainedPanelActive();
@@ -1134,7 +1144,7 @@ function ChatAgentContent({
             });
             return;
           }
-          storeFetchedAgentDetail({ serverId, result });
+          storeFetchedAgentDetail({ serverId, result, directoryScope });
         }
         if (attemptToken !== initAttemptTokenRef.current) {
           return;
@@ -1159,6 +1169,7 @@ function ChatAgentContent({
     hasAppliedAuthoritativeHistory,
     agentId,
     client,
+    directoryScope,
     hasSession,
     isConnected,
     isPaneVisible,
@@ -1221,6 +1232,7 @@ function ChatAgentContent({
       onAttentionInputFocus={attentionController.clearOnInputFocus}
       onAttentionPromptSend={attentionController.clearOnPromptSend}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      directoryScope={directoryScope}
     />
   );
 }
@@ -1251,6 +1263,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onAttentionInputFocus,
   onAttentionPromptSend,
   onOpenWorkspaceFile,
+  directoryScope,
 }: {
   serverId: string;
   workspaceId: string;
@@ -1277,6 +1290,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onAttentionInputFocus: () => void;
   onAttentionPromptSend: () => void;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  directoryScope: "build" | "chat";
 }) {
   const { t } = useTranslation();
   const subagentRows = useSubagentsForParent({ serverId, parentAgentId: agentId });
@@ -1289,11 +1303,13 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     rows: subagentRows,
   });
   const hasActiveComposer = !agentState.archivedAt && !isArchivingCurrentAgent;
-  const hasVisibleAgentTracks = hasAgentTracks({
-    subagentRows,
-    tasks,
-    archiveFinishedStatus: archiveFinishedSubagents.status,
-  });
+  const hasVisibleAgentTracks =
+    directoryScope === "build" &&
+    hasAgentTracks({
+      subagentRows,
+      tasks,
+      archiveFinishedStatus: archiveFinishedSubagents.status,
+    });
   const rawAgentInputDraft = useAgentInputDraft({
     acceptsLauncherDraft: isPaneFocused,
     draftKey: buildDraftStoreKey({
@@ -1356,6 +1372,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
         onMessageSent={handleMessageSent}
+        directoryScope={directoryScope}
       />
     </RenderProfile>
   );
@@ -1376,7 +1393,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           onOpenWorkspaceFile={onOpenWorkspaceFile}
         />
       </RenderProfile>
-      {hasActiveComposer ? (
+      {hasActiveComposer && directoryScope === "build" ? (
         <AgentTracks
           serverId={serverId}
           workspaceId={workspaceId}
@@ -1560,6 +1577,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
+  directoryScope,
 }: {
   agentId?: string;
   serverId: string;
@@ -1573,6 +1591,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
+  directoryScope: "build" | "chat";
 }) {
   if (!agentId) {
     return null;
@@ -1596,6 +1615,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
       onMessageSent={onMessageSent}
+      directoryScope={directoryScope}
     />
   );
 });
@@ -1611,6 +1631,7 @@ function ActiveAgentComposer({
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
+  directoryScope,
 }: {
   agentId: string;
   serverId: string;
@@ -1622,6 +1643,7 @@ function ActiveAgentComposer({
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
+  directoryScope: "build" | "chat";
 }) {
   const insets = useSafeAreaInsets();
   const isCompactFormFactor = useIsCompactFormFactor();
@@ -1647,7 +1669,7 @@ function ActiveAgentComposer({
   );
   const handleOpenWorkspaceAttachment = useCallback(
     (attachment: WorkspaceComposerAttachment) => {
-      if (attachment.kind !== "review") {
+      if (directoryScope === "chat" || attachment.kind !== "review") {
         return;
       }
       openWorkspaceChanges({
@@ -1657,7 +1679,7 @@ function ActiveAgentComposer({
         preferences: openInSidePane,
       });
     },
-    [cwd, isCompactFormFactor, openInSidePane, serverId, workspaceId],
+    [cwd, directoryScope, isCompactFormFactor, openInSidePane, serverId, workspaceId],
   );
 
   const handleClientSlashCommand = useCallback(
@@ -1668,19 +1690,26 @@ function ActiveAgentComposer({
       }
 
       const workspaceKey = buildWorkspaceTabPersistenceKey({ serverId, workspaceId });
-      if (workspaceKey) {
-        unpinWorkspaceAgent(workspaceKey, agentId);
-        hideWorkspaceAgent(workspaceKey, agentId);
-      }
-
-      if (command.kind === "replace-agent-with-draft") {
+      if (directoryScope === "chat") {
         retargetCurrentTab({
           kind: "draft",
           draftId: generateDraftId(),
           setup: buildDraftAgentSetup(agent),
         });
-      } else if (workspaceKey) {
-        closeWorkspaceTab(workspaceKey, tabId);
+      } else {
+        if (workspaceKey) {
+          unpinWorkspaceAgent(workspaceKey, agentId);
+          hideWorkspaceAgent(workspaceKey, agentId);
+        }
+        if (command.kind === "replace-agent-with-draft") {
+          retargetCurrentTab({
+            kind: "draft",
+            draftId: generateDraftId(),
+            setup: buildDraftAgentSetup(agent),
+          });
+        } else if (workspaceKey) {
+          closeWorkspaceTab(workspaceKey, tabId);
+        }
       }
 
       await archiveAgent({ serverId, agentId });
@@ -1689,6 +1718,7 @@ function ActiveAgentComposer({
       agentId,
       archiveAgent,
       closeWorkspaceTab,
+      directoryScope,
       hideWorkspaceAgent,
       retargetCurrentTab,
       serverId,

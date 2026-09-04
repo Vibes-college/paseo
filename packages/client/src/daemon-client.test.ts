@@ -3050,6 +3050,53 @@ test("sends first-agent prompt context with workspace.create.request", async () 
   });
 });
 
+test("resolves the daemon-owned Chat workspace", async () => {
+  const logger = createMockLogger();
+  const mock = createMockTransport();
+
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger,
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+
+  const connectPromise = client.connect();
+  mock.triggerOpen({ features: { chatWorkspace: true } });
+  await connectPromise;
+
+  const resolvePromise = client.resolveChatWorkspace("req-chat-workspace");
+  expect(parseSentFrame(mock.sent[0])).toEqual({
+    type: "chat.workspace.resolve.request",
+    requestId: "req-chat-workspace",
+  });
+
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "chat.workspace.resolve.response",
+      payload: {
+        requestId: "req-chat-workspace",
+        workspace: {
+          workspaceId: "wks_chat",
+          cwd: "/tmp/paseo/runtime/chat-workspace",
+        },
+        error: null,
+      },
+    }),
+  );
+
+  await expect(resolvePromise).resolves.toEqual({
+    requestId: "req-chat-workspace",
+    workspace: {
+      workspaceId: "wks_chat",
+      cwd: "/tmp/paseo/runtime/chat-workspace",
+    },
+    error: null,
+  });
+});
+
 test("sends project.remove.request", async () => {
   const logger = createMockLogger();
   const mock = createMockTransport();

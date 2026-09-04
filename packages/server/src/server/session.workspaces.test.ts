@@ -43,6 +43,10 @@ import {
   writePaseoWorktreeMetadata,
 } from "../utils/worktree-metadata.js";
 import type { WorkspaceGitRuntimeSnapshot } from "./workspace-git-service.js";
+import {
+  HiddenChatWorkspaceError,
+  type HiddenChatWorkspaceService,
+} from "./hidden-chat-workspace-service.js";
 import type { GeneratedWorkspaceName } from "./worktree-branch-name-generator.js";
 import { WorkspaceAutoName } from "./workspace-auto-name.js";
 import type { ForgeService } from "../services/forge-service.js";
@@ -551,6 +555,7 @@ function createSessionForWorkspaceTests(
     agentStorage?: { [K in keyof SessionOptions["agentStorage"]]?: unknown };
     projectRegistry?: SessionOptions["projectRegistry"];
     workspaceRegistry?: SessionOptions["workspaceRegistry"];
+    hiddenChatWorkspaceService?: HiddenChatWorkspaceService;
     github?: ForgeService;
     paseoHome?: string;
     worktreesRoot?: string;
@@ -670,6 +675,7 @@ function createSessionForWorkspaceTests(
         upsert: async () => {},
         ...options.agentStorage,
       }),
+      hiddenChatWorkspaceService: options.hiddenChatWorkspaceService,
       projectRegistry: options.projectRegistry ?? {
         initialize: async () => {},
         existsOnDisk: async () => true,
@@ -735,6 +741,109 @@ function createSessionForWorkspaceTests(
   );
   return session;
 }
+
+test("chat.workspace.resolve.request returns the daemon-owned Chat workspace", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const session = createSessionForWorkspaceTests({
+    onMessage: (message) => emitted.push(message),
+    hiddenChatWorkspaceService: {
+      resolve: async () => ({
+        workspaceId: "wks_chat",
+        cwd: "/tmp/paseo-test/runtime/chat-workspace",
+      }),
+    },
+  });
+
+  await session.handleMessage({
+    type: "chat.workspace.resolve.request",
+    requestId: "req-chat-workspace",
+  });
+
+  expect(findByType(emitted, "chat.workspace.resolve.response")).toEqual({
+    type: "chat.workspace.resolve.response",
+    payload: {
+      requestId: "req-chat-workspace",
+      workspace: {
+        workspaceId: "wks_chat",
+        cwd: "/tmp/paseo-test/runtime/chat-workspace",
+      },
+      error: null,
+    },
+  });
+});
+
+test("chat.workspace.resolve.request returns typed storage failures", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const session = createSessionForWorkspaceTests({
+    onMessage: (message) => emitted.push(message),
+    hiddenChatWorkspaceService: {
+      resolve: async () => {
+        throw new HiddenChatWorkspaceError(
+          "ownership_conflict",
+          "Hidden Chat storage is owned by another surface",
+        );
+      },
+    },
+  });
+
+  await session.handleMessage({
+    type: "chat.workspace.resolve.request",
+    requestId: "req-chat-workspace-error",
+  });
+
+  expect(findByType(emitted, "chat.workspace.resolve.response")).toEqual({
+    type: "chat.workspace.resolve.response",
+    payload: {
+      requestId: "req-chat-workspace-error",
+      workspace: null,
+      error: {
+        code: "ownership_conflict",
+        message: "Hidden Chat storage is owned by another surface",
+      },
+    },
+  });
+});
+
+test("project.list.request hides the daemon-owned Chat project", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const visibleProject = createPersistedProjectRecord({
+    projectId: "project-visible",
+    rootPath: "/repo/visible",
+    kind: "git",
+    displayName: "Visible",
+    createdAt: "2026-08-12T08:00:00.000Z",
+    updatedAt: "2026-08-12T08:00:00.000Z",
+  });
+  const hiddenProject = createPersistedProjectRecord({
+    projectId: "project-hidden-chat",
+    internalPurpose: "chat",
+    rootPath: "/tmp/paseo-test/runtime/chat-workspace",
+    kind: "non_git",
+    displayName: "Chat",
+    createdAt: "2026-08-12T08:00:00.000Z",
+    updatedAt: "2026-08-12T08:00:00.000Z",
+  });
+  const session = createSessionForWorkspaceTests({
+    onMessage: (message) => emitted.push(message),
+    projectRegistry: {
+      initialize: async () => {},
+      existsOnDisk: async () => true,
+      list: async () => [visibleProject, hiddenProject],
+      get: async (projectId) =>
+        [visibleProject, hiddenProject].find((project) => project.projectId === projectId) ?? null,
+      getOrCreateActiveByRoot: async () => visibleProject,
+      upsert: async () => {},
+      archive: async () => {},
+      remove: async () => {},
+    },
+  });
+
+  await session.handleMessage({ type: "project.list.request", requestId: "list-projects" });
+
+  expect(findByType(emitted, "project.list.response")?.payload.projects).toEqual([
+    expect.objectContaining({ projectId: "project-visible" }),
+  ]);
+});
 
 test("project.list.request catches up by sequence on the existing RPC", async () => {
   const emitted: SessionOutboundMessage[] = [];
@@ -2815,6 +2924,90 @@ test("fetch_agent_history_request pages archived historical rows separately", as
     },
   ]);
   expect(session.agentUpdates.hasSubscription()).toBe(false);
+});
+
+test("Build history hides Chat agents while an exact hidden workspace filter can list them", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const session = createSessionForWorkspaceTests();
+  const visibleCwd = path.resolve("/tmp/history-visible");
+  const hiddenCwd = path.resolve("/tmp/paseo-test/runtime/chat-workspace");
+  const visibleProject = createPersistedProjectRecord({
+    projectId: "proj-history-visible",
+    rootPath: visibleCwd,
+    kind: "non_git",
+    displayName: "Visible",
+    createdAt: "2026-03-01T12:00:00.000Z",
+    updatedAt: "2026-03-01T12:00:00.000Z",
+  });
+  const hiddenProject = createPersistedProjectRecord({
+    projectId: "proj-history-chat",
+    internalPurpose: "chat",
+    rootPath: hiddenCwd,
+    kind: "non_git",
+    displayName: "Chat",
+    createdAt: "2026-03-01T12:00:00.000Z",
+    updatedAt: "2026-03-01T12:00:00.000Z",
+  });
+  const visibleWorkspace = createPersistedWorkspaceRecord({
+    workspaceId: "ws-history-visible",
+    projectId: visibleProject.projectId,
+    cwd: visibleCwd,
+    kind: "directory",
+    displayName: "Visible",
+    createdAt: "2026-03-01T12:00:00.000Z",
+    updatedAt: "2026-03-01T12:00:00.000Z",
+  });
+  const hiddenWorkspace = createPersistedWorkspaceRecord({
+    workspaceId: "ws-history-chat",
+    projectId: hiddenProject.projectId,
+    internalPurpose: "chat",
+    cwd: hiddenCwd,
+    kind: "directory",
+    displayName: "Chat",
+    createdAt: "2026-03-01T12:00:00.000Z",
+    updatedAt: "2026-03-01T12:00:00.000Z",
+  });
+  const projects = [visibleProject, hiddenProject];
+  const workspaces = [visibleWorkspace, hiddenWorkspace];
+
+  session.emit = (message) => {
+    if (isSessionOutboundMessage(message)) emitted.push(message);
+  };
+  session.projectRegistry.get = async (projectId: string) =>
+    projects.find((project) => project.projectId === projectId) ?? null;
+  session.workspaceRegistry.list = async () => workspaces;
+  session.workspaceRegistry.get = async (workspaceId: string) =>
+    workspaces.find((workspace) => workspace.workspaceId === workspaceId) ?? null;
+  session.listAgentPayloads = async () => [
+    makeAgent({
+      id: "history-visible",
+      cwd: visibleCwd,
+      workspaceId: visibleWorkspace.workspaceId,
+      status: "idle",
+      updatedAt: "2026-03-01T12:00:00.000Z",
+    }),
+    makeAgent({
+      id: "history-chat",
+      cwd: hiddenCwd,
+      workspaceId: hiddenWorkspace.workspaceId,
+      status: "idle",
+      updatedAt: "2026-03-01T12:01:00.000Z",
+    }),
+  ];
+
+  await session.handleMessage({
+    type: "fetch_agent_history_request",
+    requestId: "req-build-history",
+  });
+  await session.handleMessage({
+    type: "fetch_agent_history_request",
+    requestId: "req-chat-history",
+    filter: { workspaceIds: [hiddenWorkspace.workspaceId] },
+  });
+
+  const responses = filterByType(emitted, "fetch_agent_history_response");
+  expect(responses[0]?.payload.entries.map((entry) => entry.agent.id)).toEqual(["history-visible"]);
+  expect(responses[1]?.payload.entries.map((entry) => entry.agent.id)).toEqual(["history-chat"]);
 });
 
 test("fetch_agent_history_request ranks a search across the whole history, not one page", async () => {

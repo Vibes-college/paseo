@@ -15,6 +15,7 @@ import {
 } from "./compact-shell-layout";
 
 export interface PaseoCompactShellSlots {
+  productHeader: HTMLElement;
   newRuntime: HTMLElement;
   runtimeMenu: HTMLElement;
 }
@@ -52,7 +53,8 @@ const HOST_STYLE = `
 .vibes-paseo-surface[data-surface="full"]{inset:0;width:100%;height:100%;border-radius:0;box-shadow:none}
 .vibes-paseo-compact-header{position:relative;z-index:20;height:52px;min-height:52px;display:flex;align-items:center;gap:2px;padding:10px 16px;box-sizing:border-box;border-bottom:1px solid #e4e4e7;background:#fff}
 .vibes-paseo-surface[data-surface="full"]>.vibes-paseo-compact-header{display:none}
-.vibes-paseo-shell-slot{display:flex;min-width:0;align-items:center}.vibes-paseo-shell-slot[data-slot="runtime-menu"]{flex:1}
+.vibes-paseo-shell-slot{display:flex;min-width:0;align-items:center}.vibes-paseo-shell-slot[data-slot="runtime-menu"]{flex:1}.vibes-paseo-shell-slot[data-slot="product-header"]{flex:1;align-self:stretch;width:100%}
+.vibes-paseo-compact-header:has(>.vibes-paseo-shell-slot[data-slot="product-header"]>*){height:56px;min-height:56px;gap:0;padding:0}.vibes-paseo-compact-header:has(>.vibes-paseo-shell-slot[data-slot="product-header"]>*)>:not([data-slot="product-header"]){display:none}
 .vibes-paseo-host-button{width:32px;height:32px;display:inline-flex;flex:none;align-items:center;justify-content:center;padding:0;border:0;border-radius:8px;background:transparent;color:#71717a;cursor:pointer}
 .vibes-paseo-host-button:hover{background:#f4f4f5;color:#18181b}.vibes-paseo-host-button:focus-visible{outline:2px solid #a1a1aa;outline-offset:2px}
 .vibes-paseo-fab{position:fixed;right:8px;bottom:8px;z-index:90;width:40px;height:40px;display:none;align-items:center;justify-content:center;padding:0;border:0;border-radius:9999px;background:#fff;color:#71717a;box-shadow:0 16px 40px rgb(15 23 42 / 14%),0 3px 10px rgb(15 23 42 / 8%),0 0 0 1px #e4e4e7;cursor:grab;touch-action:none}.vibes-paseo-fab:hover{background:#f4f4f5;color:#18181b}.vibes-paseo-fab:active{cursor:grabbing}.vibes-paseo-fab:focus-visible{outline:2px solid #a1a1aa;outline-offset:2px}
@@ -60,7 +62,7 @@ const HOST_STYLE = `
 .vibes-paseo-resize-handle{position:absolute;z-index:40}.vibes-paseo-resize-handle[data-direction="left"]{top:16px;bottom:0;left:0;width:4px;cursor:col-resize}.vibes-paseo-resize-handle[data-direction="top"]{top:0;right:0;left:16px;height:4px;cursor:row-resize}.vibes-paseo-resize-handle[data-direction="corner"]{top:0;left:0;width:16px;height:16px;cursor:nw-resize}
 .vibes-paseo-surface[data-surface="full"]>.vibes-paseo-resize-handle{display:none}
 .vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-compact-header{justify-content:flex-end}
-.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-compact-header>.vibes-paseo-shell-slot,.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-resize-handle{display:none}
+.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-compact-header>.vibes-paseo-shell-slot:not([data-slot="product-header"]),.vibes-paseo-surface[data-surface="compact"][data-compact-form-factor="mobile"]>.vibes-paseo-resize-handle{display:none}
 `;
 
 export function createPaseoHostShell(input: {
@@ -97,6 +99,7 @@ export function createPaseoHostShell(input: {
   header.className = "vibes-paseo-compact-header";
   header.dataset.paseoCompactHeader = "true";
 
+  const productHeader = createSlot("product-header");
   const newRuntime = createSlot("new-runtime");
   const runtimeMenu = createSlot("runtime-menu");
   const fullButton = createHostButton("Open full Paseo", FULL_ICON);
@@ -105,7 +108,7 @@ export function createPaseoHostShell(input: {
   minimizeButton.dataset.paseoCompactMinimize = "true";
   fullButton.addEventListener("click", () => input.onRequestSurface("full"));
   minimizeButton.addEventListener("click", input.onRequestMinimize);
-  header.append(newRuntime, runtimeMenu, fullButton, minimizeButton);
+  header.append(productHeader, newRuntime, runtimeMenu, fullButton, minimizeButton);
 
   const handles = (["left", "top", "corner"] as const).map((direction) => {
     const handle = document.createElement("div");
@@ -402,7 +405,7 @@ export function createPaseoHostShell(input: {
 
   return {
     container,
-    slots: { newRuntime, runtimeMenu },
+    slots: { productHeader, newRuntime, runtimeMenu },
     setSurface(nextSurface) {
       if (disposed) return;
       surface = nextSurface;
@@ -443,8 +446,10 @@ export function createPaseoHostShell(input: {
     focusFullButton() {
       if (disposed || minimized || !hostVisible || surface !== "compact") return;
       requestAnimationFrame(() => {
-        fullButton.focus();
-        requestAnimationFrame(() => fullButton.focus());
+        const productOpenFull = productHeader.querySelector<HTMLElement>("#paseo-open-full");
+        const target = productOpenFull ?? fullButton;
+        target.focus();
+        requestAnimationFrame(() => target.focus());
       });
     },
     diagnostics: () => {

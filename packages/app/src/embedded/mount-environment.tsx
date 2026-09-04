@@ -42,6 +42,8 @@ export interface PaseoMountCallbacks {
 }
 
 export interface PaseoMountShellSlots {
+  // COMPAT(productHeaderSlot): added in v0.7.0, remove fallback after 2027-09-02.
+  productHeader?: HTMLElement;
   newRuntime: HTMLElement;
   runtimeMenu: HTMLElement;
 }

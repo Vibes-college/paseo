@@ -37,6 +37,8 @@ function KnownHostRoute() {
     <ThemedStack screenOptions={HOST_STACK_SCREEN_OPTIONS}>
       <Stack.Screen name="index" />
       <Stack.Screen name="workspace/[workspaceId]/index" />
+      <Stack.Screen name="chat/index" />
+      <Stack.Screen name="chat/[agentId]" />
       <Stack.Screen name="agent/[agentId]" options={AGENT_SCREEN_OPTIONS} />
       <Stack.Screen name="sessions" />
       <Stack.Screen name="open-project" />

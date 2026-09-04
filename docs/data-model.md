@@ -61,6 +61,7 @@ $PASEO_HOME/
 │   ├── workspace-labels.transaction.json # Recoverable catalog/assignment compound commit
 │   └── icons/                           # Host-local custom project icon images
 ├── runtime/
+│   ├── chat-workspace/                   # Daemon-owned execution directory for Host Chat
 │   └── managed-processes/
 │       └── {recordId}.json              # Helper processes owned by Paseo; reconciled on daemon bootstrap
 ├── plugins/
@@ -413,6 +414,7 @@ Array of project records.
 | `displayName`        | `string`                    | Selected-root basename, stable across remote and Git changes                                                                               |
 | `customName`         | `string \| null`            | User-set override layered over `displayName`. Null means "use the derived name".                                                           |
 | `customIconRevision` | `string \| null`            | Identifies the host-local custom icon stored under `projects/icons/`. Null means the icon is discovered by scanning the project directory. |
+| `internalPurpose`    | `"chat"?`                   | Daemon-owned product purpose. Internal projects never enter user-facing project, workspace, history, or automation lists.                  |
 | `createdAt`          | `string` (ISO 8601)         |                                                                                                                                            |
 | `updatedAt`          | `string` (ISO 8601)         |                                                                                                                                            |
 | `archivedAt`         | `string \| null` (ISO 8601) | Soft-delete timestamp; required nullable                                                                                                   |
@@ -443,6 +445,7 @@ Array of workspace records. A workspace is a specific working directory within a
 | ------------------------------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `workspaceId`                  | `string`                                        | Opaque stable identifier (`wks_<hex>`), generated independently of the directory. MUST NOT be treated as a path; compare by exact equality. Use the `cwd` field for directory access.         |
 | `projectId`                    | `string`                                        | FK to Project.projectId; the workspace's stable project membership                                                                                                                            |
+| `internalPurpose`              | `"chat"?`                                       | Daemon-owned product purpose. Internal workspaces retain normal Agent ownership but never enter Build-facing lists.                                                                           |
 | `cwd`                          | `string`                                        | Exact execution directory selected for agents, files, scripts, and setup                                                                                                                      |
 | `kind`                         | `"local_checkout" \| "worktree" \| "directory"` | Mutable checkout classification                                                                                                                                                               |
 | `displayName`                  | `string`                                        | The human name (the generated/derived title). Decoupled from `branch` by construction.                                                                                                        |
@@ -460,6 +463,11 @@ Array of workspace records. A workspace is a specific working directory within a
 | `pinnedAt`                     | `string \| null` (ISO 8601)                     | Pinned-to-top-of-sidebar timestamp; null means "not pinned"                                                                                                                                   |
 
 > **Opaque-ID invariant:** `workspaceId` is opaque identity, never a filesystem path. Filesystem and git operations take `cwd`/`workspaceDirectory` only — never the id. A compatibility-only first-materialization bootstrap still groups pre-registry agent records by path and Git remote so existing installs retain their legacy records. That grouping never runs against a live registry, and its keys are not runtime project or workspace identity.
+
+Chat reuses this ownership model through one Host-local internal project and workspace backed by
+`$PASEO_HOME/runtime/chat-workspace`. The daemon restores the same opaque workspace ID after restart.
+`internalPurpose: "chat"` keeps the directory out of Build and automation discovery without creating
+a second Agent, workspace, or persistence model.
 
 ### Workspace label catalog
 

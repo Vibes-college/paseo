@@ -137,6 +137,8 @@ import {
 } from "./workspace-registry-model.js";
 import { resolveWorkspaceIdForPath } from "./resolve-workspace-id-for-path.js";
 import {
+  isUserVisibleProjectRecord,
+  isUserVisibleWorkspaceRecord,
   resolveProjectDisplayName,
   resolveWorkspaceDisplayName,
   resolveWorkspaceName,
@@ -147,6 +149,11 @@ import {
   type WorkspaceMutation,
   type WorkspaceRegistry,
 } from "./workspace-registry.js";
+import {
+  createHiddenChatWorkspaceService,
+  HiddenChatWorkspaceError,
+  type HiddenChatWorkspaceService,
+} from "./hidden-chat-workspace-service.js";
 import { wrapSpokenInput } from "./voice-config.js";
 import { isVoicePermissionAllowed } from "./voice-permission-policy.js";
 import {
@@ -453,6 +460,7 @@ export interface SessionOptions {
   agentStorage: AgentStorage;
   projectRegistry: ProjectRegistry;
   workspaceRegistry: WorkspaceRegistry;
+  hiddenChatWorkspaceService?: HiddenChatWorkspaceService;
   directorySync?: DirectorySyncService;
   workspaceLabelService?: WorkspaceLabelService;
   filesystem?: SessionFileSystem;
@@ -621,6 +629,22 @@ function resolveDirectorySync(service: DirectorySyncService | undefined): Direct
   return service ?? new DirectorySyncService();
 }
 
+function resolveSessionHiddenChatWorkspaceService(options: {
+  service: HiddenChatWorkspaceService | undefined;
+  paseoHome: string;
+  projectRegistry: ProjectRegistry;
+  workspaceRegistry: WorkspaceRegistry;
+}): HiddenChatWorkspaceService {
+  return (
+    options.service ??
+    createHiddenChatWorkspaceService({
+      paseoHome: options.paseoHome,
+      projectRegistry: options.projectRegistry,
+      workspaceRegistry: options.workspaceRegistry,
+    })
+  );
+}
+
 function describeRegistryTransition(record: ArchivedRecordSnapshot | null): RegistryTransition {
   if (!record) {
     return "created";
@@ -679,6 +703,7 @@ export class Session {
   private readonly agentStorage: AgentStorage;
   private readonly projectRegistry: ProjectRegistry;
   private readonly workspaceRegistry: WorkspaceRegistry;
+  private readonly hiddenChatWorkspaceService: HiddenChatWorkspaceService;
   private readonly directorySync: DirectorySyncService;
   private readonly filesystem: SessionFileSystem;
   private readonly github: ForgeService;
@@ -772,6 +797,7 @@ export class Session {
       agentStorage,
       projectRegistry,
       workspaceRegistry,
+      hiddenChatWorkspaceService,
       directorySync,
       workspaceLabelService,
       filesystem,
@@ -845,6 +871,12 @@ export class Session {
     this.agentStorage = agentStorage;
     this.projectRegistry = projectRegistry;
     this.workspaceRegistry = workspaceRegistry;
+    this.hiddenChatWorkspaceService = resolveSessionHiddenChatWorkspaceService({
+      service: hiddenChatWorkspaceService,
+      paseoHome: this.paseoHome,
+      projectRegistry: this.projectRegistry,
+      workspaceRegistry: this.workspaceRegistry,
+    });
     this.directorySync = resolveDirectorySync(directorySync);
     this.workspaceLabelService = resolveWorkspaceLabelService(workspaceLabelService);
     this.filesystem = filesystem ?? nodeSessionFileSystem;
@@ -969,8 +1001,10 @@ export class Session {
       getWebSocketRuntimeMetrics,
       listProviderAvailability: () => this.agentManager.listProviderAvailability(),
       listAgents: () => this.agentManager.listAgents(),
-      listProjects: () => this.projectRegistry.list(),
-      listWorkspaces: () => this.workspaceRegistry.list(),
+      listProjects: async () =>
+        (await this.projectRegistry.list()).filter(isUserVisibleProjectRecord),
+      listWorkspaces: async () =>
+        (await this.workspaceRegistry.list()).filter(isUserVisibleWorkspaceRecord),
       logger: this.sessionLogger,
       hubRelationships: options.hubRelationships,
       reloadConfig: () => daemonConfigStore.reload(),
@@ -1004,6 +1038,8 @@ export class Session {
       isProviderVisibleToClient: (provider) => this.isProviderVisibleToClient(provider),
       buildProjectPlacementForWorkspaceId: (workspaceId) =>
         this.buildProjectPlacementForWorkspaceId(workspaceId),
+      isWorkspaceHiddenFromAgentDirectory: (workspaceId, filter) =>
+        this.isWorkspaceHiddenFromAgentDirectory(workspaceId, filter),
       emitWorkspaceUpdateForWorkspaceId: (workspaceId) =>
         this.emitWorkspaceUpdateForWorkspaceId(workspaceId),
       sequenceAgentUpdate: (payload, agent, project, agentId, includeSequence) =>
@@ -1519,7 +1555,11 @@ export class Session {
 
   private async handleWorkspaceMutation(mutation: WorkspaceMutation): Promise<void> {
     try {
-      if (this.isCleanedUp) {
+      if (
+        this.isCleanedUp ||
+        mutation.internalPurpose === "chat" ||
+        (mutation.workspace && !isUserVisibleWorkspaceRecord(mutation.workspace))
+      ) {
         return;
       }
       if (
@@ -1577,7 +1617,12 @@ export class Session {
   private async handleProjectMutation(mutation: ProjectMutation): Promise<void> {
     try {
       const subscription = this.workspaceUpdatesSubscription;
-      if (this.isCleanedUp || !subscription) {
+      if (
+        this.isCleanedUp ||
+        !subscription ||
+        mutation.internalPurpose === "chat" ||
+        (mutation.project && !isUserVisibleProjectRecord(mutation.project))
+      ) {
         return;
       }
       const projectWorkspaceIds = (await this.workspaceRegistry.list())
@@ -1845,6 +1890,32 @@ export class Session {
 
     const project = await this.projectRegistry.get(workspace.projectId);
     if (!project) return null;
+    return this.buildProjectPlacementForWorkspace(workspace, project);
+  }
+
+  private async isWorkspaceHiddenFromAgentDirectory(
+    workspaceId: string,
+    filter: AgentUpdatesFilter | undefined,
+  ): Promise<boolean> {
+    if (filter?.workspaceIds?.includes(workspaceId)) return false;
+    const workspace = await this.workspaceRegistry.get(workspaceId);
+    return workspace ? !isUserVisibleWorkspaceRecord(workspace) : false;
+  }
+
+  private async buildAgentDirectoryPlacement(
+    workspaceId: string,
+    filter: AgentUpdatesFilter | undefined,
+  ): Promise<ProjectPlacementPayload | null> {
+    const workspace = await this.workspaceRegistry.get(workspaceId);
+    if (!workspace) return null;
+    const requestedWorkspaceIds = filter?.workspaceIds ?? [];
+    const explicitlyRequested = requestedWorkspaceIds.includes(workspaceId);
+    if (requestedWorkspaceIds.length > 0 && !explicitlyRequested) return null;
+    if (!isUserVisibleWorkspaceRecord(workspace) && !explicitlyRequested) return null;
+
+    const project = await this.projectRegistry.get(workspace.projectId);
+    if (!project) return null;
+    if (!isUserVisibleProjectRecord(project) && !explicitlyRequested) return null;
     return this.buildProjectPlacementForWorkspace(workspace, project);
   }
 
@@ -2548,6 +2619,8 @@ export class Session {
         return this.handleWorkspaceRecoveryInspectRequest(msg);
       case "workspace.recovery.restore.request":
         return this.handleWorkspaceRecoveryRestoreRequest(msg);
+      case "chat.workspace.resolve.request":
+        return this.handleChatWorkspaceResolveRequest(msg);
       default:
         return undefined;
     }
@@ -4554,9 +4627,9 @@ export class Session {
     }
   }
 
-  private async buildActiveProjectPlacementsByWorkspaceId(): Promise<
-    Map<string, ProjectPlacementPayload>
-  > {
+  private async buildActiveProjectPlacementsByWorkspaceId(
+    filter: AgentUpdatesFilter | undefined,
+  ): Promise<Map<string, ProjectPlacementPayload>> {
     const [persistedWorkspaces, persistedProjects] = await Promise.all([
       this.workspaceRegistry.list(),
       this.projectRegistry.list(),
@@ -4567,11 +4640,16 @@ export class Session {
         .map((project) => [project.projectId, project] as const),
     );
     const placementsByWorkspaceId = new Map<string, ProjectPlacementPayload>();
+    const requestedWorkspaceIds = new Set(filter?.workspaceIds ?? []);
 
     const pairs = persistedWorkspaces.flatMap((workspace) => {
       if (workspace.archivedAt) return [];
+      const explicitlyRequested = requestedWorkspaceIds.has(workspace.workspaceId);
+      if (requestedWorkspaceIds.size > 0 && !explicitlyRequested) return [];
+      if (!isUserVisibleWorkspaceRecord(workspace) && !explicitlyRequested) return [];
       const project = activeProjects.get(workspace.projectId);
       if (!project) return [];
+      if (!isUserVisibleProjectRecord(project) && !explicitlyRequested) return [];
       return [{ workspace, project }];
     });
     const placements = await Promise.all(
@@ -4648,7 +4726,7 @@ export class Session {
       includeUnavailablePersisted: request.type === "fetch_agent_history_request",
     });
     const activePlacementsByWorkspaceId =
-      scope === "active" ? await this.buildActiveProjectPlacementsByWorkspaceId() : null;
+      scope === "active" ? await this.buildActiveProjectPlacementsByWorkspaceId(filter) : null;
     if (activePlacementsByWorkspaceId) {
       agents = agents.filter(
         (agent) =>
@@ -4672,7 +4750,7 @@ export class Session {
       if (existing) {
         return existing;
       }
-      const placementPromise = this.buildProjectPlacementForWorkspaceId(workspaceId);
+      const placementPromise = this.buildAgentDirectoryPlacement(workspaceId, filter);
       placementByWorkspaceId.set(workspaceId, placementPromise);
       return placementPromise;
     };
@@ -5648,7 +5726,7 @@ export class Session {
     try {
       const projects = await Promise.all(
         (await this.projectRegistry.list())
-          .filter((project) => !project.archivedAt)
+          .filter((project) => !project.archivedAt && isUserVisibleProjectRecord(project))
           .map((project) => this.buildProjectDescriptor(project)),
       );
       const synchronized = request.sync
@@ -5918,6 +5996,42 @@ export class Session {
         { err: error, workspaceId: workspace.workspaceId, cwd: workspace.cwd },
         "Failed to register workspace for imported agent",
       );
+    }
+  }
+
+  private async handleChatWorkspaceResolveRequest(
+    request: Extract<SessionInboundMessage, { type: "chat.workspace.resolve.request" }>,
+  ): Promise<void> {
+    try {
+      const workspace = await this.hiddenChatWorkspaceService.resolve();
+      this.emit({
+        type: "chat.workspace.resolve.response",
+        payload: {
+          requestId: request.requestId,
+          workspace,
+          error: null,
+        },
+      });
+    } catch (error) {
+      const code = error instanceof HiddenChatWorkspaceError ? error.code : "resolve_failed";
+      this.sessionLogger.error(
+        { requestId: request.requestId, errorCode: code },
+        "Failed to resolve hidden Chat workspace",
+      );
+      this.emit({
+        type: "chat.workspace.resolve.response",
+        payload: {
+          requestId: request.requestId,
+          workspace: null,
+          error: {
+            code,
+            message:
+              error instanceof HiddenChatWorkspaceError
+                ? error.message
+                : "Failed to prepare Chat workspace",
+          },
+        },
+      });
     }
   }
 
